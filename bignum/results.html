@@ -194,7 +194,7 @@ but the shape is the same: near-perfect up to 3 digits, then a collapse. Side-by
 difference): <a href="compare.html">compare.html</a>. Interactive:
 <a href="inhead_arithmetic.html">inhead_arithmetic</a>.</p>
 <h2>5. Error anatomy (no-think, wrong but well-formed answers)</h2>
-<p><code>python3 longmul.py analyze &lt;results.csv&gt;...</code>. Groups are the 3-digit chunks that map to "… million", "… thousand".</p>
+<p>Each wrong but well-formed answer is compared with the correct one group by group. Groups are the 3-digit chunks that map to "… million", "… thousand".</p>
 <table>
 <tr><th></th><th>Ref 27B (5,070 grid)</th><th>Flash (169)</th><th>Flash (5,070 grid)</th></tr>
 <tr><td>Wrong but parseable</td><td>3,681</td><td>119</td><td>3,452</td></tr>
