@@ -786,12 +786,18 @@ function renderFrontier() {
 }
 // charts drawn = those whose fr-<metric> container exists on the page
 const isRefs = se => !!(se.run.solution && se.run.solution.cond === 'R');
-const FR_METRICS = ['time', 'evals', 'coding'];
+const FR_METRICS = ['timeline', 'time', 'evals', 'coding'];
 // with the fine frontier off, only fully factored sizes are drawn (partial sizes belong to the fine search)
 const frKeep = (t, se) => frFine || (t.cap !== 'skipped' && (t.passed || 0) >= (t.k || se.f.k || 1));
 const frId = id => document.getElementById(id + '-' + frMetric);
 function drawFrChart(series, shown) {
   const timeView = frMetric !== 'evals';
+  if (frMetric === 'timeline') {
+    frId('frtitle').textContent = 'Minutes from the start of each session (the budget was 60). Read from the session logs: ' +
+      'tool calls, builds and the model’s own benchmark runs.';
+    frId('fr').innerHTML = timelineChart(shown.filter(se => !se.sub && se.run.solution && se.run.solution.timeline));
+    return;
+  }
   if (frMetric === 'coding') { // scatter: one point per program, coding time vs code length
     frId('frtitle').textContent = 'x = time the model spent writing the program, y = lines of its own code ' +
       '(vendored crates not counted). Label = condition and fine frontier (digits per prime).';
@@ -901,6 +907,38 @@ function drawFrChart(series, shown) {
   if (frFine && series.some(se => !se.sub && fineOf(se.run)))
     s += '<text class="ax" x="' + (W - mr) + '" y="' + (mt - 10) + '" text-anchor="end" style="font-size:14px">◇ = fine frontier (shared cap)</text>';
   frId('fr').innerHTML = s + '</svg>';
+}
+const COND_WORDS = { M: 'memory only', R: 'web references', L: 'anything goes' };
+// one bar per run on a 60-minute axis: writing, tuning that moved reach, tuning within 1 digit, wrap-up, unused
+function timelineChart(ss) {
+  const ROW = 34, W = 960, ml = 250, mr = 24, mt = 30, mb = 96, H = mt + mb + ROW * ss.length;
+  const xs = v => ml + v / 60 * (W - ml - mr);
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="how each SOTA session spent its hour">';
+  for (let v = 0; v <= 60; v += 10) s += '<line x1="' + xs(v) + '" x2="' + xs(v) + '" y1="' + mt + '" y2="' + (H - mb) + '" stroke="var(--rule)"/>' +
+    '<text class="ax" x="' + xs(v) + '" y="' + (H - mb + 18) + '" text-anchor="middle">' + v + ' min</text>';
+  const SEG = [['working', 0.25, 'writing the first working sieve'], ['plateau', 1, 'tuning that still moved the reach'],
+    ['last_edit', 0.45, 'tuning within 1 digit of the final reach'], ['stopped', 0.15, 'checks, then the final note']];
+  ss.forEach((se, i) => {
+    const tl = se.run.solution.timeline, c = seriesStyle(se).color, y = mt + i * ROW + 6, h = ROW - 12;
+    s += '<text class="ax" x="' + (ml - 10) + '" y="' + (y + h / 2 + 5) + '" text-anchor="end" style="font-size:15px">' +
+      esc(se.run.model.replace('claude-', '').replace(/-5-5$/, ' 5.5') + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</text>';
+    let x0 = 0;
+    SEG.forEach(([k, op, what]) => {
+      const x1 = tl[k];
+      s += '<rect x="' + xs(x0) + '" y="' + y + '" width="' + Math.max(0, xs(x1) - xs(x0)) + '" height="' + h + '" fill="' + c +
+        '" fill-opacity="' + op + '"><title>' + esc(se.label + ': ' + what + ', ' + x0 + '–' + x1 + ' min') + '</title></rect>';
+      x0 = x1;
+    });
+    s += '<rect x="' + xs(tl.stopped) + '" y="' + y + '" width="' + (xs(60) - xs(tl.stopped)) + '" height="' + h +
+      '" fill="none" stroke="var(--rule)" stroke-dasharray="4 3"><title>' + esc(se.label + ': unused, ' + (60 - tl.stopped).toFixed(0) + ' min') + '</title></rect>' +
+      '<text class="ax" x="' + (xs(tl.stopped) + 6) + '" y="' + (y + h / 2 + 5) + '" style="font-size:13px">' + (60 - tl.stopped).toFixed(0) + ' min unused</text>';
+  });
+  SEG.forEach(([k, op, what], j) => { // 2 x 2 legend
+    const lx = ml + (j % 2) * (W - ml - mr) / 2, ly = H - 38 + Math.floor(j / 2) * 22;
+    s += '<rect x="' + lx + '" y="' + (ly - 10) + '" width="16" height="12" fill="var(--fg)" fill-opacity="' + op + '"/>' +
+      '<text class="ax" x="' + (lx + 22) + '" y="' + ly + '" style="font-size:13px">' + esc(what) + '</text>';
+  });
+  return s + '</svg>';
 }
 function codingScatter(ss) {
   const W = 960, H = 440, ml = 96, mr = 24, mt = 30, mb = 58;
