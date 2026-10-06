@@ -778,9 +778,10 @@ function renderFrontier() {
   const shown = series.filter(isOn);
   const ffb = document.getElementById('frfine'); if (ffb) ffb.checked = frFine;
   // three charts, one per metric; each draws into fr-<metric> with its caption in frtitle-<metric>
-  for (const m of FR_METRICS) { frMetric = m; drawFrChart(series, shown); }
+  for (const m of FR_METRICS) { frMetric = m; if (frId('fr')) drawFrChart(series, shown); }
   renderFrTable(series, isOn);
 }
+// charts drawn = those whose fr-<metric> container exists on the page
 const FR_METRICS = ['time', 'evals', 'coding'];
 // with the fine frontier off, only fully factored sizes are drawn (partial sizes belong to the fine search)
 const frKeep = (t, se) => frFine || (t.cap !== 'skipped' && (t.passed || 0) >= (t.k || se.f.k || 1));
