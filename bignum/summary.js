@@ -218,6 +218,7 @@ let ovTask = null; // overview task; null = follow the first panel
 let uid = 0;
 let ovY = 'acc';     // overview y axis: 'acc' | 'frontier' (frontier only offered when the task has it)
 let frMetric = 'time'; // frontier chart y: 'evals' | 'time' | 'coding'
+let frAnchorTest = false; // timeline: anchor reach steps to the first test instead of the code edit
 let frRefs = false; // show the R (web references) runs: off by default, since no run used the web
 let frFine = false; // show partial factorization success + fine-frontier markers (off by default)
 let frOff = []; // frontier series ids toggled off (new runs show by default)
@@ -331,7 +332,7 @@ const effTask = () => ovTask || (panels[0] && panels[0].task) || defaultTask();
 function shortOf(model) { const r = RUNS.find(x => x.model === model); return r ? r.model_short : model; }
 function encodeHash() {
   if (PAGE === 'sota') {
-    const h = [frOff.length ? 'fr=' + frOff.map(encodeURIComponent).join(',') : '', frFine ? 'ff=1' : '', frRefs ? 'rr=1' : ''].filter(Boolean).join('&');
+    const h = [frOff.length ? 'fr=' + frOff.map(encodeURIComponent).join(',') : '', frFine ? 'ff=1' : '', frRefs ? 'rr=1' : '', frAnchorTest ? 'at=1' : ''].filter(Boolean).join('&');
     return h ? '#' + h : location.pathname + location.search;
   }
   const ps = panels.map(p => {
@@ -363,6 +364,7 @@ function readHash() {
   frOff = kv.fr ? kv.fr.split(',').filter(Boolean).map(decodeURIComponent) : [];
   frFine = kv.ff === '1';
   frRefs = kv.rr === '1';
+  frAnchorTest = kv.at === '1';
   if (PAGE === 'sota') return true; // the SOTA page has no panels
   if (kv.p == null && kv.t == null) return false;
   ovY = kv.y === 'frontier' ? 'frontier' : 'acc';
@@ -780,6 +782,7 @@ function renderFrontier() {
   const shown = series.filter(se => isOn(se) && (frRefs || !isRefs(se)));
   const ffb = document.getElementById('frfine'); if (ffb) ffb.checked = frFine;
   const frb = document.getElementById('frrefs'); if (frb) frb.checked = frRefs;
+  const fab = document.getElementById('franchor'); if (fab) fab.checked = frAnchorTest;
   // three charts, one per metric; each draws into fr-<metric> with its caption in frtitle-<metric>
   for (const m of FR_METRICS) { frMetric = m; if (frId('fr')) drawFrChart(series, shown); }
   renderFrTable(series, isOn);
@@ -794,7 +797,9 @@ const frId = id => document.getElementById(id + '-' + frMetric);
 function drawFrChart(series, shown) {
   const timeView = frMetric !== 'evals';
   if (frMetric === 'timeline') {
-    frId('frtitle').textContent = 'Minutes from the start of each session (the budget was 60). Reach = the largest d (digits per ' +
+    frId('frtitle').textContent = 'Minutes from the start of each session (the budget was 60). Each reach step starts when the ' +
+      (frAnchorTest ? 'model first tested that size (tick off “anchor to tests” to start it at the code edit that earned it). ' :
+        'code that earned it was written: the last code edit before the test that showed it. ') + 'Reach = the largest d (digits per ' +
       'prime) the model’s program factored within 60 s in its own tests by that minute, read from the session logs; these ' +
       'tests are one or two numbers, so reach can sit 1–2 digits above the graded 16/16 frontier.';
     frId('fr').innerHTML = timelineChart(shown.filter(se => !se.sub && se.run.solution && se.run.solution.timeline));
@@ -911,16 +916,20 @@ function drawFrChart(series, shown) {
   frId('fr').innerHTML = s + '</svg>';
 }
 const COND_WORDS = { M: 'memory only', R: 'web references', L: 'anything goes' };
+// reach steps anchored to when the winning code was written (default) or to when it was first tested
+const stepsOf = tl => (frAnchorTest ? tl.reach : tl.reach_code || tl.reach) || [];
 function episodesOf(tl) {
-  const steps = tl.reach || [], info = tl.episodes || [];
+  const steps = stepsOf(tl), test = tl.reach || [], code = tl.reach_code || [], info = tl.episodes || [];
   const eps = [{ from: 0, to: steps.length ? steps[0][0] : tl.stopped, d: null }]
-    .concat(steps.map(([m, d], k) => ({ from: m, to: k + 1 < steps.length ? steps[k + 1][0] : tl.stopped, d })));
+    .concat(steps.map(([m, d], k) => ({ from: m, to: k + 1 < steps.length ? steps[k + 1][0] : tl.stopped, d,
+      code: code[k] ? code[k][0] : null, test: test[k] ? test[k][0] : null })));
   eps.forEach((e, k) => Object.assign(e, info[k] ? { solution: info[k].solution, measured: info[k].measured } : {}));
   return eps;
 }
 function episodeTip(se, e) {
   return '<strong>' + esc(se.run.model + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</strong><br>minutes ' + e.from + '–' + e.to +
-    ' · ' + (e.d == null ? 'writing' : 'reach d = ' + e.d) + (e.solution ? '<br>' + esc(e.solution) : '') +
+    ' · ' + (e.d == null ? 'writing' : 'reach d = ' + e.d) +
+    (e.d != null && e.code != null ? '<br>code written at ' + e.code + ' min · first tested at ' + e.test + ' min' : '') + (e.solution ? '<br>' + esc(e.solution) : '') +
     (e.measured ? '<br><em>' + esc(e.measured) + '</em>' : '');
 }
 // one bar per run on a 60-minute axis: grey until the first measured result, then one segment per reach level
@@ -934,7 +943,7 @@ function timelineChart(ss) {
     '<text class="ax" x="' + xs(v) + '" y="' + (H - mb + 18) + '" text-anchor="middle">' + v + ' min</text>';
   ss.forEach((se, i) => {
     const tl = se.run.solution.timeline, c = seriesStyle(se).color, y = mt + i * ROW + 6, h = ROW - 12;
-    const steps = tl.reach || [];
+    const steps = stepsOf(tl);
     s += '<text class="ax" x="' + (ml - 10) + '" y="' + (y + h / 2 + 5) + '" text-anchor="end" style="font-size:15px">' +
       esc(se.run.model.replace('claude-', '').replace(/-5-5$/, ' 5.5') + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</text>';
     const first = steps.length ? steps[0][0] : tl.stopped;
@@ -951,7 +960,7 @@ function timelineChart(ss) {
       '" fill="none" stroke="var(--rule)" stroke-dasharray="4 3"><title>' + esc(se.label + ': unused, ' + (60 - tl.stopped).toFixed(0) + ' min') + '</title></rect>' +
       '<text class="ax" x="' + (xs(tl.stopped) + 6) + '" y="' + (y + h / 2 + 5) + '" style="font-size:13px">' + (60 - tl.stopped).toFixed(0) + ' min unused</text>';
   });
-  const LEG = [['<rect width="16" height="12" fill="var(--fg)" fill-opacity="0.12"/>', 'writing, before the first measured result'],
+  const LEG = [['<rect width="16" height="12" fill="var(--fg)" fill-opacity="0.12"/>', frAnchorTest ? 'writing, before the first measured result' : 'writing, before the first working code'],
     ['<rect width="16" height="12" fill="var(--fg)" fill-opacity="0.6"/>', 'reach d (label): darker = more digits'],
     ['<line x1="8" x2="8" y1="-2" y2="14" stroke="var(--fg)" stroke-width="2.5"/>', 'last code change'],
     ['<rect width="16" height="12" fill="none" stroke="var(--rule)" stroke-dasharray="4 3"/>', 'unused budget']];
@@ -987,9 +996,9 @@ function renderEpisodes(shown) {
   const rows = [];
   shown.filter(se => !se.sub && se.run.solution && se.run.solution.timeline).forEach(se => episodesOf(se.run.solution.timeline).forEach(e =>
     rows.push('<tr><td>' + esc(COND[se.run.solution.cond] || '') + '</td><td><span style="color:' + seriesStyle(se).color + '">■</span> ' +
-      esc(se.run.model + ' · ' + se.run.level) + '</td><td class="num">' + e.from + '–' + e.to + ' min</td><td class="num">' +
+      esc(se.run.model + ' · ' + se.run.level) + '</td><td class="num">' + (e.d == null ? '0–' + e.to : e.code + ' / ' + e.test) + ' min</td><td class="num">' +
       (e.d == null ? '<em>writing</em>' : '<strong>' + e.d + '</strong>') + '</td><td>' + esc(e.solution || '–') + '</td><td>' + esc(e.measured || '') + '</td></tr>')));
-  el.innerHTML = rows.length ? '<table><thead><tr><th>condition</th><th>model · effort</th><th class="num">minutes</th><th class="num">reach d</th>' +
+  el.innerHTML = rows.length ? '<table><thead><tr><th>condition</th><th>model · effort</th><th class="num">code written / first tested</th><th class="num">reach d</th>' +
     '<th>solution at this point</th><th>measured</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>' : '';
 }
 function renderFrTable(series, isOn) {
@@ -1435,6 +1444,9 @@ frEl.addEventListener('mousemove', e => { const g = e.target.closest('.frpt'); i
 frEl.addEventListener('mouseleave', hideFrTip);
 frEl.addEventListener('focusin', e => { const g = e.target.closest('.frpt'); if (g) showFrTip(g); });
 frEl.addEventListener('focusout', hideFrTip);
+});
+document.getElementById('franchor')?.addEventListener('change', e => {
+  frAnchorTest = e.target.checked; hideFrTip(); renderFrontier(); writeHash();
 });
 document.getElementById('frrefs')?.addEventListener('change', e => {
   frRefs = e.target.checked; hideFrTip(); renderFrontier(); writeHash();

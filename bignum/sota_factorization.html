@@ -43,6 +43,7 @@ rules, so the run counts as is.</p>
 with 16 fresh pairs per size and T = 60 s per number. Three views of the same runs; the run selector below applies to
 all three. Color = model; shape (and line style) = condition: ● M memory only, ■ R web references, ▲ L anything goes. R is hidden by default: no run used the web, so it did nothing beyond memory only; tick “web references (R)” to show it. By default only fully factored sizes (16/16) are drawn. Tick “partial factorization success” to add the sizes where fewer than 16 pairs were factored (hollow markers), and ◇ at the fine frontier: the exact largest d with 16/16 (galloping + binary search).</p>
 <div class="chips" id="frmwrap"><label class="chip"><input type="checkbox" id="frrefs"> web references (R)</label>
+  <label class="chip"><input type="checkbox" id="franchor"> anchor to tests</label>
   <label class="chip"><input type="checkbox" id="frfine"> partial factorization success</label></div>
 <div class="chips" id="frlegend" role="group" aria-label="Runs shown in the three frontier charts"></div>
 <div id="frcharts">
