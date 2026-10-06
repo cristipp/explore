@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Foreseeing programs</title>
-<meta name="description" content="Wolfram: if you can foresee a program completely, why run it? Provable: no general foreseer exists, not even one that halves the time. But that is an existence result; Wolfram's &quot;a lot you can't foresee&quot; is a density claim that rests on the Principle of Computational Equivalence, a thesis.">
+<meta name="description" content="If you can foresee a program completely, why run it? Provable: no general foreseer exists, not even one that halves the time. But that is an existence result; the essay's &quot;a lot you can't foresee&quot; is a density claim that rests on the Principle of Computational Equivalence, a thesis.">
 <style>
 :root{--bg:#fff;--fg:#111;--muted:#666;--code:#f3f3f3;--rule:#ddd;--link:#0b5cad;
 --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--neutral:#a9a8a2;--grid:#e6e5e0;--card:#f7f7f5;--good:#1b7837;--warn:#b35806;--bad:#c0392b}
@@ -52,10 +52,10 @@ select{font:inherit;font-size:18px;background:var(--bg);color:var(--fg);border:1
 <body>
 <nav><a href="index.html">↑ foresee</a></nav>
 <h1>Can you foresee what a program will do without running it?</h1>
-<p class="small">Report, 6 October 2026. Starting point: two sentences from Stephen Wolfram's essay
+<p class="small">Report, 6 October 2026. Starting point: two sentences from <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s essay
 <a href="https://writings.stephenwolfram.com/2026/07/towards-a-theory-of-bugs-the-ruliology-of-the-unexpected/">"Towards a Theory of Bugs:
 The Ruliology of the Unexpected"</a> (21 July 2026), as quoted on X by
-<a href="https://x.com/michael_timbs/status/2107274513516011687">@michael_timbs</a>, who asked what Wolfram meant.</p>
+<a href="https://x.com/michael_timbs/status/2107274513516011687">@michael_timbs</a>, who asked what <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a> meant.</p>
 <blockquote>"if you can completely foresee what a program will do, what's the point of running it? Why not, in effect, just immediately 'write down
 the answer', without ever having to run the program? […] once there's anything you can't foresee, there tends to be a lot you can't
 foresee."</blockquote>
@@ -70,24 +70,24 @@ foresee."</blockquote>
 </ul></div>
 
 <div class="card">
-<p style="margin-top:0"><strong>The answer in one picture.</strong> Wolfram's second sentence can be read two ways. The worst-case
-reading reaches a theorem in its second step. The density reading, which is what his words say, reaches none.</p>
+<p style="margin-top:0"><strong>The answer in one picture.</strong> <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s second sentence can be read two ways. The worst-case
+reading reaches a theorem in its second step. The density reading, which is what the essay says, reaches none.</p>
 <p class="chainlabel">Worst case: <em>some</em> behaviour can't be foreseen</p>
 <div class="chain" role="img" aria-label="Worst case: looks complex, via the PCE (a thesis), implies efficiently universal, which via the theorem (proved) implies some runs cannot be foreseen">
 <div class="node">looks complex<br><span class="small">not obviously simple</span></div>
 <div class="arrow thesis"><span>PCE</span><b>⟶</b><span>thesis</span></div>
-<div class="node"><a class="term" href="#t-efficient-universal">efficiently universal</a><br><span class="small">our requirement, not Wolfram's</span></div>
+<div class="node"><a class="term" href="#t-efficient-universal">efficiently universal</a><br><span class="small">our requirement, not the PCE's</span></div>
 <div class="arrow proved"><span>theorem</span><b>⟶</b><span>proved</span></div>
 <div class="node">some runs unforeseeable<br><span class="small">no uniform shortcut</span></div>
 </div>
-<p class="chainlabel">Density: <em>most</em> behaviour can't be foreseen (what Wolfram says)</p>
+<p class="chainlabel">Density: <em>most</em> behaviour can't be foreseen (what the essay says)</p>
 <div class="chain" role="img" aria-label="Density: looks complex, via the PCE read as a density claim (a thesis with no theorem), implies the system is full of computational irreducibility">
 <div class="node">looks complex<br><span class="small">not obviously simple</span></div>
 <div class="arrow thesis"><span>PCE as density</span><b>⟶</b><span>thesis, no theorem</span></div>
 <div class="node">"full of computational irreducibility"<br><span class="small">reducible pockets are the exception</span></div>
 </div>
 <p style="margin-bottom:0">The theorem (section 1): <strong>no general foreseer exists, not even one that just halves the time.</strong> It is an
-existence result, like "irrational numbers exist". Wolfram's "a lot" is about how much of a system's behaviour is unforeseeable, a density
+existence result, like "irrational numbers exist". <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s "a lot" is about how much of a system's behaviour is unforeseeable, a density
 question that no theorem reaches (<a href="#density">section 2</a>).</p>
 </div>
 
@@ -101,7 +101,7 @@ method has to read the question. F foresees a set of runs if one F with one s &g
 </div>
 <p>The order of the quantifiers decides everything:</p>
 <ul>
-<li><strong>One run:</strong> always foreseeable, by "print the answer", Wolfram's "write down the answer". But someone had to compute it.</li>
+<li><strong>One run:</strong> always foreseeable, by "print the answer", <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s "write down the answer". But someone had to compute it.</li>
 <li id="def-linear-speedup"><strong>One program, all inputs:</strong> foreseeable up to any constant factor, by a bigger twin program (the linear
 speedup theorem, Hartmanis &amp; Stearns 1965). So "completely foresee what a program will do" must mean an <em>asymptotically</em> faster
 shortcut, and whether one exists is a question about that program. Rule 90 has one; for Rule 30 nobody knows (try it below).</li>
@@ -110,7 +110,7 @@ shortcut, and whether one exists is a question about that program. Rule 90 has o
 <div class="card" id="def-prize3">
 <p style="margin-top:0"><strong>Try it: a shortcut and a mystery.</strong> Both <a class="term" href="#t-ca">cellular automata</a> start from one black cell. Rule 90 is
 Pascal's triangle mod 2, so by <a class="term" href="#t-lucas">Lucas's theorem</a> any cell at any step is one bit test, even at step 10<sup>18</sup>. Rule 30 has no known
-shortcut: its centre cell at step n takes about n² cell updates to simulate. Whether order n work is unavoidable is Problem 3 of Wolfram's
+shortcut: its centre cell at step n takes about n² cell updates to simulate. Whether order n work is unavoidable is Problem 3 of <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s
 2019 <a href="https://writings.stephenwolfram.com/2019/10/announcing-the-rule-30-prizes/">Rule 30 Prizes</a>, still open.</p>
 <div class="tri"><figure><canvas id="c90"></canvas><figcaption>Rule 90, 64 steps</figcaption></figure><figure><canvas id="c30"></canvas><figcaption>Rule 30, 64 steps</figcaption></figure></div>
 <div class="row" style="margin-top:10px"><label>Rule 90, step: <input type="text" id="j90" value="1000000000000000000"></label>
@@ -157,8 +157,8 @@ single systems, or how common unforeseeable runs are.</p>
 </div>
 
 <h2 id="density">2. How much is "a lot"?</h2>
-<p>Wolfram's words are a density claim: the system "will tend to be full of <a class="term" href="#t-irreducible">computational irreducibility</a>", with pockets of reducibility in
-between. He presents this step as intuition from the <a class="term" href="#def-pce">Principle of Computational Equivalence</a> (section 4). The theorem is an existence claim.
+<p><a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s words are a density claim: the system "will tend to be full of <a class="term" href="#t-irreducible">computational irreducibility</a>", with pockets of reducibility in
+between. <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a> presents this step as intuition from the <a class="term" href="#def-pce">Principle of Computational Equivalence</a> (section 4). The theorem is an existence claim.
 The gap is the one between the rationals and the reals, and it starts with "a lot" having several inequivalent meanings:</p>
 <table>
 <tr><th>"a lot" measured by</th><th>the rationals inside the reals</th></tr>
@@ -174,7 +174,7 @@ about their measure.</li>
 <li><strong><a class="term" href="#t-universal">Universality</a> gives variety, not density.</strong> A universal system contains every computation <em>somewhere</em>, possibly
 only on a measure-zero set of carefully built starting conditions, as in Rule 110's universality proof. "Once there's anything" behaves the
 same way: computing one hard function means computing everything reducible to it. Breadth, not bulk.</li>
-<li><strong>Wolfram's picture is "the irrationals have full measure".</strong> Irreducibility is the bulk; pockets of reducibility are like
+<li><strong><a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s picture is "the irrationals have full measure".</strong> Irreducibility is the bulk; pockets of reducibility are like
 the rationals, present everywhere but small. The PCE's "almost all processes" is a density claim across systems; "full of irreducibility"
 is one within a system.</li>
 </ul>
@@ -192,11 +192,11 @@ universality, form a measure-zero set (Juedes &amp; Lutz 1995). The typical hard
 "no natural intermediates".</li>
 <li><strong>The PCE's best reply.</strong> Those typical problems are random noise. Nature runs short rules, and short rules are like the
 computable reals: countably many, measure zero, yet the only ones anyone can name. What is typical <em>among simple rules</em> has no
-canonical measure and no theorems, only Wolfram's enumerations.</li>
+canonical measure and no theorems, only <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s enumerations.</li>
 </ul>
-<p><strong>Our experiments</strong> (<a href="#s5">section 5</a>) point the same way: in Wolfram's own bug experiment, late surprises
+<p><strong>Our experiments</strong> (<a href="#s5">section 5</a>) point the same way: in <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s own bug experiment, late surprises
 exist but quickly become rare, and pockets of exact coarse-grained foresight turn up in most elementary rules, though not in Rule 30.</p>
-<p>So the density claim, the one Wolfram actually makes, is not reached by the theorem and not implied by universality, and where measure
+<p>So the density claim, the one <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a> actually makes, is not reached by the theorem and not implied by universality, and where measure
 theory can speak, it speaks both ways. It stands or falls with the PCE as a <a class="term" href="#def-thesis">thesis</a> about simple rules.</p>
 
 <h2 id="s3">3. The ladder: what is proved, conjectured, or a thesis</h2>
@@ -217,13 +217,13 @@ rung is a precise open conjecture. The last is a thesis that only evidence can s
 <p id="def-pce">The Principle of Computational Equivalence (PCE), from
 <a href="https://www.wolframscience.com/nks/chap-12--the-principle-of-computational-equivalence/">A New Kind of Science</a>, ch. 12: almost
 all processes that are not obviously simple "can be viewed as computations of equivalent sophistication" (pp. 716–717). As stated it can't
-be proved: "almost all" has no <a class="term" href="#t-measure">measure</a> and "obviously simple" no definition. Wolfram presents it as partly a law of nature, partly an
-abstract fact and partly a definition (p. 719). Its premise is "not obviously simple", not "unforeseeable"; reading his bug sentence as
+be proved: "almost all" has no <a class="term" href="#t-measure">measure</a> and "obviously simple" no definition. <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a> presents it as partly a law of nature, partly an
+abstract fact and partly a definition (p. 719). Its premise is "not obviously simple", not "unforeseeable"; reading the bug sentence as
 "unforeseeable ⇒ <a class="term" href="#t-universal">universal</a>" is our gloss.</p>
 <p>Mathematics says it is <strong>false in principle and true in practice</strong>:</p>
 <ul>
 <li><strong>False in principle.</strong> There are undecidable problems strictly weaker than the <a class="term" href="#t-halting">halting problem</a> (Friedberg 1957; Muchnik
-1956) and, if <a class="term" href="#t-exp">P ≠ NP</a>, problems strictly between easy and <a class="term" href="#t-npcomplete">NP-complete</a> (Ladner 1975). Wolfram's reply (NKS p. 1130): these constructions only
+1956) and, if <a class="term" href="#t-exp">P ≠ NP</a>, problems strictly between easy and <a class="term" href="#t-npcomplete">NP-complete</a> (Ladner 1975). <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s reply (NKS p. 1130): these constructions only
 look at outputs, and have universal components inside.</li>
 <li><strong>True in practice.</strong> Natural undecidable problems turn out exactly as hard as the halting problem (Montalbán 2019), and
 natural NP problems are almost always either easy or NP-complete; for constraint satisfaction problems that dichotomy is a theorem (Bulatov
@@ -234,13 +234,13 @@ Turing machines and Diophantine equations. Note that the PCE promises equivalent
 theorem needs.</p>
 <p id="def-thesis"><strong>Verdict: a thesis, and a well-supported one</strong>, in the sense of the <a class="term" href="#t-churchturing">Church–Turing thesis</a>: it ties an
 informal notion to a formal one, so evidence can support it but no proof can settle it. It is false as a precise theorem, plausible as a
-regularity of the systems nature produces, and, as section 2 shows, unproven in exactly the density form that Wolfram's sentence needs.</p>
+regularity of the systems nature produces, and, as section 2 shows, unproven in exactly the density form that <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s sentence needs.</p>
 
 <h2 id="s5">5. Two experiments: bugs and pockets</h2>
-<p><strong>Wolfram's bugs, rerun.</strong> His essay enumerates tiny Turing machines (s states, two colours, input n in binary under
-the head, output read when the head moves right of its start) and asks which ones add 1. We tested all (4s)<sup>2s</sup> of them, 4.3
-billion for 4 states, on n = 1…255, and match his counts: 8,934 three-state and 9,335,700 four-state machines are right on every input
-tried, and 222 four-state machines are right up to 62 but wrong at 63 (one answers 72, as in his essay). Late bugs sit at inputs like 7, 15,
+<p><strong><a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s bugs, rerun.</strong> The essay enumerates tiny Turing machines (s states, two colours, input n in binary under
+the head, output read when the head moves right of its start) and asks which ones add 1. The rerun by <a href="https://x.com/cristipp">@cristipp</a> tested all (4s)<sup>2s</sup> of them, 4.3
+billion for 4 states, on n = 1…255, matching the essay's counts: 8,934 three-state and 9,335,700 four-state machines are right on every input
+tried, and 222 four-state machines are right up to 62 but wrong at 63 (one answers 72, as in the essay). Late bugs sit at inputs like 7, 15,
 31, 63, where the carry travels furthest.</p>
 <div class="card">
 <div id="bugTable"></div>
@@ -261,7 +261,7 @@ that still fails by 255:</p>
 <tr><td class="num">31</td><td class="num">9,335,922</td><td class="num">222</td><td class="num">0.0024%</td></tr>
 <tr><td class="num">63</td><td class="num">9,335,700</td><td class="num">0</td><td class="num">0</td></tr>
 </table>
-<p>Each doubling of the test depth cuts late failures by a factor of 5 to 70. Testing can miss, which is Wolfram's point, but rarely, which
+<p>Each doubling of the test depth cuts late failures by a factor of 5 to 70. Testing can miss, which is <a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s point, but rarely, which
 is not "a lot". The caveats: tiny machines, a simple task, inputs only up to 255.</p>
 <p class="small">Code: a 100-line C program that branches on a rule-table entry only when a run first needs it, about 20 minutes for the 4.3
 billion machines. "Never stops" means no halt within 20,000 steps.</p>
@@ -282,8 +282,8 @@ one (formal verification lives in these pockets), and <strong>statistics</strong
 even that is unproved (Rule 30 Prize problem 2).</p>
 
 <h2 id="s6">6. Bottom line</h2>
-<p>Wolfram's first sentence is close to a tautology: a program with a shortcut isn't worth running. Its precise companion is a theorem: no
-general <a class="term" href="#def-foresee">foreseer</a> exists, not even one that just halves the time, so programs worth running always exist. That is an existence result. His
+<p><a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s first sentence is close to a tautology: a program with a shortcut isn't worth running. Its precise companion is a theorem: no
+general <a class="term" href="#def-foresee">foreseer</a> exists, not even one that just halves the time, so programs worth running always exist. That is an existence result. The
 second sentence is a density claim, that a complex-looking system is full of <a class="term" href="#t-irreducible">irreducibility</a>. No theorem reaches it, <a class="term" href="#t-measure">measure</a> theory cuts both
 ways, and our bug data shows surprises that exist but are rare. It rests on the <a class="term" href="#def-pce">PCE</a>: a well-supported <a class="term" href="#def-thesis">thesis</a> about simple rules, not a
 theorem.</p>
@@ -294,7 +294,7 @@ theorem.</p>
 <dt id="t-ca">cellular automaton</dt><dd>A row of black and white cells updated in parallel by one rule. In an <em>elementary</em> one, a cell's next colour depends on itself and its two neighbours: 256 possible rules (Rule 30, Rule 90, Rule 110, …).</dd>
 <dt id="t-universal">universal</dt><dd>Able to emulate any Turing machine, given a suitable encoding of the machine and its input in the starting condition.</dd>
 <dt id="t-efficient-universal">efficiently universal</dt><dd>Universal with only polynomial overhead in encoding size and running time. The theorem needs this; exponential overhead is not enough.</dd>
-<dt id="t-irreducible">computationally irreducible</dt><dd>Wolfram's term: no way to predict a system essentially faster than running it (NKS p. 739). A property of one system; the theorem is about a different notion, no uniform speedup across a class.</dd>
+<dt id="t-irreducible">computationally irreducible</dt><dd><a href="https://x.com/stephen_wolfram">@stephen_wolfram</a>'s term: no way to predict a system essentially faster than running it (NKS p. 739). A property of one system; the theorem is about a different notion, no uniform speedup across a class.</dd>
 <dt id="t-exp">P, NP, E</dt><dd>P: problems solvable in polynomial time. NP: problems whose solutions can be <em>checked</em> in polynomial time. E: problems solvable in time 2<sup>O(n)</sup>. P ≠ NP is the famous open problem.</dd>
 <dt id="t-npcomplete">NP-complete</dt><dd>The hardest problems in NP: a fast algorithm for one would give fast algorithms for all of NP.</dd>
 <dt id="t-pcomplete">P-complete</dt><dd>The hardest problems in P under very cheap reductions: if one had a fast parallel algorithm (in NC), all of P would.</dd>
