@@ -45,7 +45,7 @@ xhigh, which produces <em>shorter</em> reasoning than "medium".</li>
 <!-- cells: fine frontier · coding time (solution) -->
 <tr><td>M: memory only (std + big-int whitelist)</td><td><b>40</b> · 38 min (own SIQS and own big-int arithmetic,
 no crates; 1,510 lines)</td><td><b>40</b> · 44 min (SIQS, 1,310 lines)</td></tr>
-<tr><td>R: references (web allowed; never used)</td><td>37 · 19 min (SIQS, 1,091 lines)</td>
+<tr><td>R: web references (allowed; never used)</td><td>37 · 19 min (SIQS, 1,091 lines)</td>
 <td><b>40</b> · 26 min (SIQS + Block Lanczos, 1,750 lines)</td></tr>
 <tr><td>L: anything goes (crates + web)</td><td>39 · 50 min (own SIQS with double large primes; rayon)</td>
 <td><b>41</b> · 53 min (<code>rusqsieve</code> crate, vendored and retuned)</td></tr>
@@ -53,7 +53,7 @@ no crates; 1,510 lines)</td><td><b>40</b> · 44 min (SIQS, 1,310 lines)</td></tr
 <ul>
 <li><strong>Convergence on the state of the art: supported.</strong> All six runs built a quadratic sieve; from
 memory they come within 1 digit of the library-based best (40 vs 41). No run used web search or fetch, so
-"references" made no difference.</li>
+"web references" made no difference.</li>
 <li><strong>Above a competency threshold the model doesn't matter: supported.</strong> Sonnet medium (memory only)
 matches Opus max (40 = 40); the spread over all six runs is 37–41 digits per prime.</li>
 <li><strong>A self-inflicted handicap (Sonnet M):</strong> it wrote <code>num-bigint = "0.4"</code> from memory, but

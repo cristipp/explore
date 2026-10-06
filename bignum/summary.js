@@ -17,7 +17,7 @@ const ORDER = {
 };
 const PALETTE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9', '#D55E00', '#8C6BB1', '#999933',
   '#882255', '#44AA99'];
-// shape = condition on the SOTA page (M memory only, R references, L anything goes); no thinking / thinking in-head
+// shape = condition on the SOTA page (M memory only, R web references, L anything goes); no thinking / thinking in-head
 const SHAPES = { nothink: 'circle', think: 'square', sota_rust_M: 'circle', sota_rust_R: 'square', sota_rust_L: 'triangle' };
 const shapeOf = mode => SHAPES[mode] || (/^sota/.test(mode) ? 'triangle' : 'diamond');
 function rank(list, v) { const i = list.indexOf(v); return i < 0 ? list.length : i; }
@@ -218,7 +218,7 @@ let ovTask = null; // overview task; null = follow the first panel
 let uid = 0;
 let ovY = 'acc';     // overview y axis: 'acc' | 'frontier' (frontier only offered when the task has it)
 let frMetric = 'time'; // frontier chart y: 'evals' | 'time' | 'coding'
-let frRefs = false; // show the R (references) runs: off by default, since no run used the web
+let frRefs = false; // show the R (web references) runs: off by default, since no run used the web
 let frFine = false; // show partial factorization success + fine-frontier markers (off by default)
 let frOff = []; // frontier series ids toggled off (new runs show by default)
 let ovModes = null; // null = all modes; else array of modes to plot (may include modes the task lacks)
@@ -918,7 +918,7 @@ function codingScatter(ss) {
     const st = seriesStyle(se), so = se.run.solution, ff = fineOf(se.run), x = xs(tx(se)), y = ys(ty(se));
     s += '<g><title>' + esc(se.label + ': ' + fmtDur(so.dev_seconds) + ' coding, ' + fmtInt(so.lines) + ' lines' +
       (ff ? ', fine frontier ' + ff.fine_frontier : '')) + '</title>' + shapePath(shapeOf(se.run.mode), x, y, 9) + ' fill="' + st.color + '"/>' +
-      '<text class="ax" x="' + (x + 12) + '" y="' + (y + 5) + '" style="font-size:15px">' + esc(({ M: 'memory only', R: 'references', L: 'anything goes' }[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '')) + '</text></g>';
+      '<text class="ax" x="' + (x + 12) + '" y="' + (y + 5) + '" style="font-size:15px">' + esc(({ M: 'memory only', R: 'web references', L: 'anything goes' }[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '')) + '</text></g>';
   });
   return s + '</svg>';
 }
@@ -1202,7 +1202,7 @@ function renderLive(flash, err) {
     flashT = setTimeout(() => el.classList.remove('flash'), 1800);
   }
 }
-const COND = { M: 'M · memory only', R: 'R · references', L: 'L · anything goes' };
+const COND = { M: 'M · memory only', R: 'R · web references', L: 'L · anything goes' };
 function renderSota() {
   const rs = RUNS.filter(r => r.solution).sort((a, b) => rank(['M', 'R', 'L'], a.solution.cond) - rank(['M', 'R', 'L'], b.solution.cond) ||
     String(a.model).localeCompare(b.model));
