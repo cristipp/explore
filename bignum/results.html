@@ -227,8 +227,10 @@ difference): <a href="compare.html">compare.html</a>. Interactive:
 pre-fetched (the prompt says the crates are downloaded but not which versions). The offline build failed, and the
 model wrote its own big-integer code rather than retry with 0.5. Counted as is; the other three whitelist runs used 0.5
 or "*" and built fine.</li>
-<li><strong>Budget overshoot:</strong> in-head arms can exceed the 1 h by up to one case (e.g. 3,773 s), because the
-HTTP timeout isn't a total deadline. To be fixed.</li>
+<li><strong>Budget overshoot:</strong> some in-head arms ran past their 1 h by one slow case (up to 4,124 s for 27B
+factoring with high thinking), because the HTTP timeout bounded each socket read, not the whole request. Requests now
+have a hard wall-clock deadline; the affected runs keep their recorded times, and the one extra case each makes almost
+no difference to their scores.</li>
 </ul>
 
 <h2>7. Method</h2>
