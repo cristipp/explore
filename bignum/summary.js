@@ -465,7 +465,7 @@ function renderPanel(p, idx) {
     all.forEach(v => {
       const o = document.createElement('option');
       o.value = v == null ? '' : v;
-      const lab = f === 'task' ? tl(v) : v;
+      const lab = f === 'task' ? tl(v) : f === 'arm' && ARM_TEXT[v] ? ARM_TEXT[v] : v;
       o.textContent = opts.includes(v) ? lab : (lab || '(none)') + ' — no data';
       if (v === p[f]) o.selected = true;
       s.appendChild(o);
@@ -719,6 +719,8 @@ const frDefaultOn = se => !noProg(se);
 const frIsOn = se => frDefaultOn(se) !== frOff.includes(se.id);
 // SOTA conditions, least to most constrained: anything goes, web no crates, no web no crates
 const COND_ORDER = ['L', 'R', 'M'];
+// readable names for the two no-thinking runs on add + words
+const ARM_TEXT = { nothink: '169 cases (paired)', 'nothink-grid': 'full grid (5,070 cases)' };
 function frontierSeries() {
   const out = [];
   const condRank = r => rank(COND_ORDER, r.solution ? r.solution.cond : '');
