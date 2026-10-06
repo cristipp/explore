@@ -793,8 +793,9 @@ const frId = id => document.getElementById(id + '-' + frMetric);
 function drawFrChart(series, shown) {
   const timeView = frMetric !== 'evals';
   if (frMetric === 'timeline') {
-    frId('frtitle').textContent = 'Minutes from the start of each session (the budget was 60). Read from the session logs: ' +
-      'tool calls, builds and the model’s own benchmark runs.';
+    frId('frtitle').textContent = 'Minutes from the start of each session (the budget was 60). Reach = the largest d (digits per ' +
+      'prime) the model’s program factored within 60 s in its own tests by that minute, read from the session logs; these ' +
+      'tests are one or two numbers, so reach can sit 1–2 digits above the graded 16/16 frontier.';
     frId('fr').innerHTML = timelineChart(shown.filter(se => !se.sub && se.run.solution && se.run.solution.timeline));
     return;
   }
@@ -909,33 +910,43 @@ function drawFrChart(series, shown) {
   frId('fr').innerHTML = s + '</svg>';
 }
 const COND_WORDS = { M: 'memory only', R: 'web references', L: 'anything goes' };
-// one bar per run on a 60-minute axis: writing, tuning that moved reach, tuning within 1 digit, wrap-up, unused
+// one bar per run on a 60-minute axis: grey until the first measured result, then one segment per reach level
+// (largest d its program factored within 60 s, by the model's own tests), shaded darker for more digits
 function timelineChart(ss) {
   const ROW = 34, W = 960, ml = 250, mr = 24, mt = 30, mb = 96, H = mt + mb + ROW * ss.length;
   const xs = v => ml + v / 60 * (W - ml - mr);
-  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="how each SOTA session spent its hour">';
+  const shade = d => Math.max(0.12, Math.min(1, 0.12 + 0.88 * (d - 30) / 12)); // d <= 30 lightest, 42 full
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="how each SOTA session spent its hour, by reach over time">';
   for (let v = 0; v <= 60; v += 10) s += '<line x1="' + xs(v) + '" x2="' + xs(v) + '" y1="' + mt + '" y2="' + (H - mb) + '" stroke="var(--rule)"/>' +
     '<text class="ax" x="' + xs(v) + '" y="' + (H - mb + 18) + '" text-anchor="middle">' + v + ' min</text>';
-  const SEG = [['working', 0.25, 'writing the first working sieve'], ['plateau', 1, 'tuning that still moved the reach'],
-    ['last_edit', 0.45, 'tuning within 1 digit of the final reach'], ['stopped', 0.15, 'checks, then the final note']];
   ss.forEach((se, i) => {
     const tl = se.run.solution.timeline, c = seriesStyle(se).color, y = mt + i * ROW + 6, h = ROW - 12;
+    const steps = tl.reach || [];
     s += '<text class="ax" x="' + (ml - 10) + '" y="' + (y + h / 2 + 5) + '" text-anchor="end" style="font-size:15px">' +
       esc(se.run.model.replace('claude-', '').replace(/-5-5$/, ' 5.5') + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</text>';
-    let x0 = 0;
-    SEG.forEach(([k, op, what]) => {
-      const x1 = tl[k];
-      s += '<rect x="' + xs(x0) + '" y="' + y + '" width="' + Math.max(0, xs(x1) - xs(x0)) + '" height="' + h + '" fill="' + c +
-        '" fill-opacity="' + op + '"><title>' + esc(se.label + ': ' + what + ', ' + x0 + '–' + x1 + ' min') + '</title></rect>';
-      x0 = x1;
+    const first = steps.length ? steps[0][0] : tl.stopped;
+    s += '<rect x="' + xs(0) + '" y="' + y + '" width="' + (xs(first) - xs(0)) + '" height="' + h + '" fill="var(--fg)" fill-opacity="0.12">' +
+      '<title>' + esc(se.label + ': writing and building, 0–' + first + ' min') + '</title></rect>';
+    steps.forEach(([m, d], k) => {
+      const m1 = k + 1 < steps.length ? steps[k + 1][0] : tl.stopped, w = xs(m1) - xs(m);
+      s += '<rect x="' + xs(m) + '" y="' + y + '" width="' + Math.max(0, w) + '" height="' + h + '" fill="' + c + '" fill-opacity="' + shade(d) +
+        '"><title>' + esc(se.label + ': reach d = ' + d + ' from minute ' + m + ' to ' + m1) + '</title></rect>';
+      if (w >= 22) s += '<text x="' + (xs(m) + w / 2) + '" y="' + (y + h / 2 + 5) + '" text-anchor="middle" style="font-size:13px;fill:' +
+        (shade(d) > 0.55 ? '#fff' : 'var(--fg)') + '">' + d + '</text>';
     });
+    s += '<line x1="' + xs(tl.last_edit) + '" x2="' + xs(tl.last_edit) + '" y1="' + (y - 3) + '" y2="' + (y + h + 3) + '" stroke="var(--fg)" stroke-width="2.5">' +
+      '<title>' + esc(se.label + ': last code change at ' + tl.last_edit + ' min') + '</title></line>';
     s += '<rect x="' + xs(tl.stopped) + '" y="' + y + '" width="' + (xs(60) - xs(tl.stopped)) + '" height="' + h +
       '" fill="none" stroke="var(--rule)" stroke-dasharray="4 3"><title>' + esc(se.label + ': unused, ' + (60 - tl.stopped).toFixed(0) + ' min') + '</title></rect>' +
       '<text class="ax" x="' + (xs(tl.stopped) + 6) + '" y="' + (y + h / 2 + 5) + '" style="font-size:13px">' + (60 - tl.stopped).toFixed(0) + ' min unused</text>';
   });
-  SEG.forEach(([k, op, what], j) => { // 2 x 2 legend
+  const LEG = [['<rect width="16" height="12" fill="var(--fg)" fill-opacity="0.12"/>', 'writing, before the first measured result'],
+    ['<rect width="16" height="12" fill="var(--fg)" fill-opacity="0.6"/>', 'reach d (label): darker = more digits'],
+    ['<line x1="8" x2="8" y1="-2" y2="14" stroke="var(--fg)" stroke-width="2.5"/>', 'last code change'],
+    ['<rect width="16" height="12" fill="none" stroke="var(--rule)" stroke-dasharray="4 3"/>', 'unused budget']];
+  LEG.forEach(([icon, what], j) => {
     const lx = ml + (j % 2) * (W - ml - mr) / 2, ly = H - 38 + Math.floor(j / 2) * 22;
-    s += '<rect x="' + lx + '" y="' + (ly - 10) + '" width="16" height="12" fill="var(--fg)" fill-opacity="' + op + '"/>' +
+    s += '<g transform="translate(' + lx + ',' + (ly - 10) + ')">' + icon + '</g>' +
       '<text class="ax" x="' + (lx + 22) + '" y="' + ly + '" style="font-size:13px">' + esc(what) + '</text>';
   });
   return s + '</svg>';
