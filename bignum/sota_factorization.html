@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>bignum SOTA factoring</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="summary.css">
+</head>
+<body data-page="sota">
+<nav><a href="index.html">↑ bignum</a> · <a href="results.html">results</a> · <a href="inhead_arithmetic.html">inhead_arithmetic</a> · <a href="sota_factorization.html">sota_factorization</a></nav>
+<h1>SOTA factoring</h1>
+<p class="intro">Each model writes the best factoring program it can in 1 h; the programs are graded afterwards.</p>
+<p class="intro"><strong>Hypotheses</strong>, stated before the runs: (1) a competent coder converges on the state of the art whatever the constraints:
+with libraries it calls the best library, with references but no libraries it implements the best algorithm, and from
+memory alone it still implements the best algorithm. (2) Above a competency threshold, the model doesn't matter. To
+test both, Sonnet 5.5 medium and Opus 5.5 max each ran under three conditions (M, R, L below).</p>
+<p class="intro"><strong>Verdict: both supported.</strong> (1) All six runs built a self-initialising quadratic sieve, the standard
+best method at these sizes. Opus with libraries used the <code>rusqsieve</code> crate and reached 41 digits per prime;
+from memory alone both models reached 40. Caveat: no run used the web, so the references condition (R) ended up the
+same as memory only. (2) Sonnet medium matches Opus max from memory (40 = 40), and all six land within 37–41. What
+differs is the solution each model chose and how long it took to write it (19–53 min).</p>
+<div class="taskbar">
+  <span id="live" role="status" aria-live="polite"></span>
+  <button id="pause" type="button" aria-pressed="false">Pause auto-refresh</button>
+</div>
+<h2 id="sota">What each model built</h2>
+<p class="note">Each model had 1 h to write the best factoring program it could, in Rust, with the grading rules stated
+up front. M = memory only (std + a small big-int crate whitelist), R = web references allowed (none were used), L =
+anything (any crate + web). Programs differ only in which solution the model chose and how long it took to write; the
+chart below checks that their runtime performance is indeed similar.</p>
+<p class="note">Hardware: the models ran as Claude Code sessions in the cloud, but built, benchmarked and tuned their
+programs on this machine, a MacBook Air with Apple M4 (10 cores) and 32 GB. Grading ran afterwards on the same machine,
+idle.</p>
+<p class="note">Sonnet M uses no crates by accident: it asked for num-bigint 0.4, only 0.5.1 was pre-fetched, and
+after the offline build failed it wrote its own big-integer code instead of switching versions. The rules are the
+rules, so the run counts as is.</p>
+<div id="sotatable"></div>
+
+<h2 id="frontier">Factoring frontier: runtime control</h2>
+<p class="note" id="frnote">Each SOTA program, graded after its hour on an idle machine: p and q both have d digits,
+with 16 fresh pairs per size and T = 60 s per number. Three views of the same runs; the run selector below applies to
+all three. Tick “fine frontier” to mark it with ◇ (exact largest d with 16/16, found by galloping + binary search).</p>
+<div class="chips" id="frmwrap"><label class="chip"><input type="checkbox" id="frfine"> fine frontier ◇</label></div>
+<div class="chips" id="frlegend" role="group" aria-label="Runs shown in the three frontier charts"></div>
+<div id="frcharts">
+<h3>Answer time per pair</h3>
+<p class="note" id="frtitle-time"></p>
+<div class="frwrap"><div class="frchart" id="fr-time"></div><div class="frtip" role="tooltip"></div></div>
+<h3>Pairs factored per size</h3>
+<p class="note" id="frtitle-evals"></p>
+<div class="frwrap"><div class="frchart" id="fr-evals"></div><div class="frtip" role="tooltip"></div></div>
+<h3>Coding time vs code length</h3>
+<p class="note" id="frtitle-coding"></p>
+<div class="frwrap"><div class="frchart" id="fr-coding"></div><div class="frtip" role="tooltip"></div></div>
+</div>
+<div id="frtable"></div>
+
+<script id="datascript" src="summary-data.js"></script>
+<script src="summary.js"></script>
+</body>
+</html>

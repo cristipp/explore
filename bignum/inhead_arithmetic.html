@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>bignum in-head</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="summary.css">
+</head>
+<body data-page="grid">
+<nav><a href="index.html">↑ bignum</a> · <a href="results.html">results</a> · <a href="inhead_arithmetic.html">inhead_arithmetic</a> · <a href="sota_factorization.html">sota_factorization</a></nav>
+<h1>In-head arithmetic</h1>
+<p class="intro">Answering in the head (no thinking vs thinking) on add + words, mul + words and factoring. Every finished run, by digit-length cell. Each panel shows one run as a grid in <a href="https://x.com/simonw">@simonw</a>'s style,
+starting from its own task selector. Set a panel’s “clone from” to another panel to make it follow all of that panel’s selections (chains allowed); change a selector there to override just that field. The x axis is the digits of <em>a</em> (or <em>p</em>), and the y axis is the digits of <em>b</em>
+(or <em>q</em>). Clone a panel and change one selector to compare. The overview at the bottom plots accuracy against
+total time for every run of a task. The page refreshes itself as new results arrive, and its state is kept in the
+URL, so you can bookmark or share a comparison.</p>
+
+<div class="taskbar">
+  <span id="live" role="status" aria-live="polite"></span>
+  <button id="pause" type="button" aria-pressed="false">Pause auto-refresh</button>
+</div>
+<div class="toolbar">
+  <button id="add" type="button">+ Add chart</button>
+  <button id="reset" type="button">Reset to default</button>
+</div>
+<div id="panels"></div>
+
+<h2 id="ovtitle">Overview: accuracy vs time to completion</h2>
+<div class="chips"><label for="ovtask" class="lbl">Task</label>
+  <select id="ovtask" aria-label="Task shown in the overview"></select></div>
+<div class="chips" id="ovmodes" role="group" aria-label="Modes plotted in the overview"></div>
+<div class="chips" id="ovywrap" hidden><label for="ovy" class="lbl">y axis</label>
+  <select id="ovy" aria-label="Overview y axis"><option value="acc">accuracy</option><option value="frontier">frontier digits</option></select><span class="note" id="ovynote"></span></div>
+<p class="note">Click a point to open it as a new panel. Ringed points (#n) are shown in panels.</p>
+<p class="note"><strong>Time is hardware-dependent.</strong> <a href="https://x.com/simonw">@simonw</a>'s runs: NVIDIA DGX Spark (GB10), llama.cpp (CUDA),
+Qwen3.8-27B Q4_K_M, about 12 tok/s. <a href="https://x.com/cristipp">@cristipp</a>'s: MacBook Pro with Apple M5 Max (128 GB), oMLX, oQ4e weights with multi-token
+prediction, about 30 tok/s on the 27B and 77 tok/s on Flash. Token counts are about the same, so the time gap is the
+setup, not the model. Our runs all share the same machine and compare fairly with each other.</p>
+<div class="legend" id="ovlegend"></div>
+<div id="ovwrap"><div id="ov"></div><div id="tip" role="tooltip"></div></div>
+
+<script id="datascript" src="summary-data.js"></script>
+<script src="summary.js"></script>
+</body>
+</html>

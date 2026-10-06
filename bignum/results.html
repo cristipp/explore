@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>bignum results</title>
+<link rel="stylesheet" href="style.css">
+<style>.wide{overflow-x:auto} td small{color:var(--muted)} td.np{color:var(--muted)} th{text-align:left}</style>
+</head>
+<body>
+<nav><a href="index.html">↑ bignum</a> · <a href="results.html">results</a> · <a href="inhead_arithmetic.html">inhead_arithmetic</a> · <a href="sota_factorization.html">sota_factorization</a></nav>
+<h1>bignum — results</h1>
+<p><strong>Status: overnight runs complete (2026-10-06).</strong> SOTA experiment graded; fine frontiers at T = 60 s for
+all factoring programs. The tables below are generated
+from the run data; the findings are written by hand. Interactive charts:
+<a href="inhead_arithmetic.html">inhead_arithmetic</a> (in-head) and <a href="sota_factorization.html">sota_factorization</a> (SOTA factoring).</p>
+
+<h2>1. Findings so far</h2>
+<ol>
+<li><strong><a href="https://x.com/simonw">@simonw</a>'s result reproduces, on two models.</strong> No-thinking addition in words collapses with operand
+length: Flash scores 1,489/5,070 on <a href="https://x.com/simonw">@simonw</a>'s full grid (<a href="https://x.com/simonw">@simonw</a>'s 27B: 1,195), and our 27B scores 44/169 on the paired cases (<a href="https://x.com/simonw">@simonw</a>'s:
+45/169). With thinking, everything is near-perfect (Flash 169/169).</li>
+<li><strong>Multiplication is much harder without thinking.</strong> Flash no-think scores 19/169 on mul + words (vs
+48/169 on add + words); with thinking, 168/169 at high effort.</li>
+<li><strong>Factoring in the head stops at about 8-digit products.</strong> With thinking, both Qwen models factor
+the 13 easiest numbers (Flash medium: 16), then run into the 16k-token limit or the 1 h budget (19–30 of 91 attempted).
+Without thinking: 2–3/91.</li>
+<li><strong>Writing a program from memory solves add + words and mul + words outright.</strong> Given an hour, no
+internet and no libraries (Python), both Qwen models at high effort write converters that score 169/169 on each task
+and 169/169 on a hidden set of fresh cases.</li>
+<li><strong>Factoring by program reaches 37–41 digits per prime.</strong> Sonnet medium and Opus max, given an hour in
+Rust with the grading rules stated up front, all build a quadratic sieve (see 1b).</li>
+<li><strong>Qwen can barely write Rust.</strong> Asked for the same converter in Rust, Flash ran out of tokens before
+producing code; the 27B's program had one compile error (a missing <code>mut</code>) and, once fixed, a spacing bug
+(8/169).</li>
+<li><strong>The higher effort level isn't more thinking for Qwen.</strong> On oMLX, "high" maps to the template's
+xhigh, which produces <em>shorter</em> reasoning than "medium".</li>
+</ol>
+
+<h2>1b. SOTA convergence (factoring, Rust, 1 h, grading rules stated up front)</h2>
+<p>Fine frontier = exact largest digits per prime with 16/16 fresh balanced semiprimes factored within 60 s each
+(graded after the hour, on an idle machine).</p>
+<table>
+<tr><th>Condition</th><th>Sonnet 5.5 medium</th><th>Opus 5.5 max</th></tr>
+<!-- cells: fine frontier · coding time (solution) -->
+<tr><td>M: memory only (std + big-int whitelist)</td><td><b>40</b> · 38 min (own SIQS and own big-int arithmetic,
+no crates; 1,510 lines)</td><td><b>40</b> · 44 min (SIQS, 1,310 lines)</td></tr>
+<tr><td>R: references (web allowed; never used)</td><td>37 · 19 min (SIQS, 1,091 lines)</td>
+<td><b>40</b> · 26 min (SIQS + Block Lanczos, 1,750 lines)</td></tr>
+<tr><td>L: anything (crates + web)</td><td>39 · 50 min (own SIQS with double large primes; rayon)</td>
+<td><b>41</b> · 53 min (<code>rusqsieve</code> crate, vendored and retuned)</td></tr>
+</table>
+<ul>
+<li><strong>Convergence on the state of the art: supported.</strong> All six runs built a quadratic sieve; from
+memory they come within 1 digit of the library-based best (40 vs 41). No run used web search or fetch, so
+"references" made no difference.</li>
+<li><strong>Above a competency threshold the model doesn't matter: supported.</strong> Sonnet medium (memory only)
+matches Opus max (40 = 40); the spread over all six runs is 37–41 digits per prime.</li>
+<li><strong>A self-inflicted handicap (Sonnet M):</strong> it wrote <code>num-bigint = "0.4"</code> from memory, but
+the pre-fetched whitelist was 0.5.1. The offline build failed with cargo naming the available version, and Sonnet then
+dropped all crates and wrote its own big-integer arithmetic instead of switching to 0.5. A dumb error, but within the
+rules, so the run counts as is; it still reached 40.</li>
+<li><strong>The only real difference is the solution chosen and how fast it was written</strong> (19–53 min). Runtime per
+number near the frontier is within about 2× across all six (<a href="sota_factorization.html">sota_factorization</a>, frontier chart).</li>
+<li>Usage: the six 1 h runs cost about +1% of the weekly plan limit.</li>
+</ul>
+
+<h2>2. Ablation by task</h2>
+<p>Cells: correct/cases, time below (for the SOTA arms on add + words / mul + words, the time includes writing the
+program). † = the 1 h arm budget ran out
+before all cases were tried.</p>
+<!-- GEN:ablation -->
+<h3>add + words</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th><th>SOTA (memory only, Python, high)</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>44/169<br><small>2 min</small></td><td>162/169<br><small>58 min</small></td><td>167/169<br><small>31 min</small></td><td>169/169<br><small>1.0 h</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>48/169<br><small>1 min</small></td><td>169/169<br><small>11 min</small></td><td>169/169<br><small>10 min</small></td><td>169/169<br><small>26 min</small></td></tr></table></div>
+<h3>mul + words</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th><th>SOTA (memory only, Python, high)</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>16/169<br><small>30 min</small></td><td>91/169 †<br><small>1.0 h · 93 tried</small></td><td>114/169 †<br><small>1.1 h · 117 tried</small></td><td>169/169<br><small>36 min</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>19/169<br><small>1 min</small></td><td>162/169<br><small>1.3 h</small></td><td>168/169<br><small>56 min</small></td><td>169/169<br><small>36 min</small></td></tr></table></div>
+<h3>factor</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>2/91 ⧗<br><small>28 min · 86 tried</small></td><td>13/91 †<br><small>1.1 h · 19 tried</small></td><td>13/91 †<br><small>1.1 h · 19 tried</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>3/91<br><small>3 min</small></td><td>16/91 †<br><small>1.0 h · 30 tried</small></td><td>13/91 †<br><small>1.0 h · 28 tried</small></td></tr></table></div>
+<!-- /GEN:ablation -->
+
+<h2>3. Factoring frontier</h2>
+<p>Every SOTA factoring program is graded after its hour, on an idle machine, on the same diagonal grid: p and q both
+d digits, d = 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, with 16 fresh pairs per size. The frontier is
+the largest d where every size up to d is 16/16. The fine frontier is the exact d found by a galloping + binary search
+on fresh pairs, with T = 60 s per number.</p>
+<!-- GEN:frontier -->
+<div class='wide'><table><tr><th>model</th><th>arm</th><th>lang</th><th>frontier (digits/prime)</th><th>factored</th><th>coding time</th><th>fine frontier</th><th>per size (d:passed/16)</th></tr><tr><td>claude-opus-5-5</td><td>sota_rust_L-max</td><td>Rust</td><td><b>41</b></td><td>121/240</td><td>53 min</td><td>41 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 41:16 42:9 43:0 47:0 63:0</small></td></tr><tr><td>claude-opus-5-5</td><td>sota_rust_M-max</td><td>Rust</td><td><b>40</b></td><td>122/240</td><td>44 min</td><td>40 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:16 41:10 43:0 47:0 63:0</small></td></tr><tr><td>claude-opus-5-5</td><td>sota_rust_R-max</td><td>Rust</td><td><b>40</b></td><td>117/240</td><td>26 min</td><td>40 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:16 41:5 43:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-5-5</td><td>sota_rust_M-medium</td><td>Rust</td><td><b>40</b></td><td>112/240</td><td>38 min</td><td>40 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:16 41:0 43:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-5-5</td><td>sota_rust_L-medium</td><td>Rust</td><td><b>39</b></td><td>101/240</td><td>50 min</td><td>39 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:5 41:0 43:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-5-5</td><td>sota_rust_R-medium</td><td>Rust</td><td><b>37</b></td><td>127/240</td><td>19 min</td><td>37 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 35:16 37:16 38:15 39:0 47:0 63:0</small></td></tr></table></div>
+<!-- /GEN:frontier -->
+
+<h2>4. Reproduction of <a href="https://x.com/simonw">@simonw</a>'s experiment</h2>
+<p>Same cases, prompt, greedy settings and grader as <a href="https://x.com/simonw">@simonw</a> (verified byte-for-byte: <code>self-test</code>,
+<code>replay</code>). Model here: <code>Qwen3.8-Flash-Next-oQ4e-mtp</code>; reference: <a href="https://x.com/simonw">@simonw</a>'s
+<code>Qwen3.8-27B-Q4_K_M.gguf</code> on llama-server.</p>
+<p><strong>Hardware.</strong> The two setups differ, so times compare machines and serving stacks, not models:</p>
+<table>
+<tr><th></th><th><a href="https://x.com/simonw">@simonw</a></th><th><a href="https://x.com/cristipp">@cristipp</a> (Qwen)</th><th><a href="https://x.com/cristipp">@cristipp</a> (Claude programs)</th></tr>
+<tr><td>Hardware</td><td>NVIDIA DGX Spark (GB10)</td><td>MacBook Pro, Apple M5 Max (18 cores), 128 GB</td>
+<td>MacBook Air, Apple M4 (10 cores), 32 GB</td></tr>
+<tr><td>Server / runtime</td><td>llama.cpp <code>llama-server</code> (CUDA), 1 parallel slot</td>
+<td>oMLX (MLX), one request at a time</td><td>Claude Code sessions in the cloud; programs built, run and graded locally</td></tr>
+<tr><td>Weights</td><td>Qwen3.8-27B, GGUF Q4_K_M</td><td>Qwen3.8-27B / Flash-Next, oQ4e (4-bit MLX) with
+multi-token prediction (<code>-mtp</code>)</td><td>–</td></tr>
+</table>
+<p>On the same 27B and the same cases, both setups generate about the same number of tokens (thinking medium: 623 vs 668
+per case), but <a href="https://x.com/cristipp">@cristipp</a>'s setup runs at about 30 tok/s vs <a href="https://x.com/simonw">@simonw</a>'s 12 tok/s, so 3,486 s vs 9,565 s. Flash is faster still (≈ 77 tok/s,
+a mixture-of-experts model) and thinks less (286 tokens per case): 632 s. Only our own runs, all on the same M5 Max, are
+comparable on time with each other.</p>
+<h3>Paired 169 cases (one per digit-length cell, easiest first)</h3>
+<table>
+<thead>
+<tr>
+<th>Measure</th>
+<th style="text-align: right;">Flash no-think</th>
+<th style="text-align: right;">Flash medium</th>
+<th style="text-align: right;">Ref 27B no-think</th>
+<th style="text-align: right;">Ref 27B medium</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Numeric correct</td>
+<td style="text-align: right;">48/169 (28.4%)</td>
+<td style="text-align: right;"><strong>169/169</strong></td>
+<td style="text-align: right;">45/169 (26.6%)</td>
+<td style="text-align: right;">167/169</td>
+</tr>
+<tr>
+<td>max digits 1–3</td>
+<td style="text-align: right;">9/9</td>
+<td style="text-align: right;">9/9</td>
+<td style="text-align: right;">8/9</td>
+<td style="text-align: right;">9/9</td>
+</tr>
+<tr>
+<td>max digits 4–6</td>
+<td style="text-align: right;">21/27</td>
+<td style="text-align: right;">27/27</td>
+<td style="text-align: right;">22/27</td>
+<td style="text-align: right;">27/27</td>
+</tr>
+<tr>
+<td>max digits 7–9</td>
+<td style="text-align: right;">13/45</td>
+<td style="text-align: right;">45/45</td>
+<td style="text-align: right;">11/45</td>
+<td style="text-align: right;">44/45</td>
+</tr>
+<tr>
+<td>max digits 10–13</td>
+<td style="text-align: right;">5/88</td>
+<td style="text-align: right;">88/88</td>
+<td style="text-align: right;">4/88</td>
+<td style="text-align: right;">87/88</td>
+</tr>
+<tr>
+<td>Instruction compliant</td>
+<td style="text-align: right;">167</td>
+<td style="text-align: right;">169</td>
+<td style="text-align: right;">164</td>
+<td style="text-align: right;">168</td>
+</tr>
+<tr>
+<td>Median completion tokens</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">186</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">313</td>
+</tr>
+<tr>
+<td>Median seconds / case</td>
+<td style="text-align: right;">0.42</td>
+<td style="text-align: right;">2.64</td>
+<td style="text-align: right;">1.50</td>
+<td style="text-align: right;">27.6</td>
+</tr>
+</tbody>
+</table>
+<p>No-think, case by case vs reference: 38 both right, 10 only Flash, 7 only reference, 114 both wrong. Medium: Flash
+also solves the reference's two misses (<code>73 + 42,439,903</code> and the trillion/billion slip).</p>
+<p>Unlike <a href="https://x.com/simonw">@simonw</a>'s comparison, our no-think and medium runs share the same order (easiest first). Only the token cap
+differs (128 vs none), and no-think answers use a median of 14 tokens, so the cap doesn't bind.</p>
+<h3>Full 5,070-case no-think grid</h3>
+<p>Same 5,070 cases as <a href="https://x.com/simonw">@simonw</a>'s headline run (30 per cell, <a href="https://x.com/simonw">@simonw</a>'s shuffled order), no thinking, 128-token cap.</p>
+<table>
+<tr><th>Longer operand</th><th>Flash</th><th>Ref 27B (llama.cpp)</th></tr>
+<tr><td>1–3 digits</td><td>265/270 (98%)</td><td>262/270 (97%)</td></tr>
+<tr><td>4–6 digits</td><td>639/810 (79%)</td><td>529/810 (65%)</td></tr>
+<tr><td>7–9 digits</td><td>363/1,350 (27%)</td><td>234/1,350 (17%)</td></tr>
+<tr><td>10–13 digits</td><td>222/2,640 (8%)</td><td>170/2,640 (6%)</td></tr>
+<tr><td><strong>All</strong></td><td><strong>1,489/5,070 (29.4%, CI 28.1–30.6)</strong></td>
+<td><strong>1,195/5,070 (23.6%, CI 22.4–24.8)</strong></td></tr>
+<tr><td>Instruction compliant</td><td>4,941 (97.5%)</td><td>4,876 (96.2%)</td></tr>
+<tr><td>Median seconds / case</td><td>0.66</td><td>1.58</td></tr>
+</table>
+<p>Case by case: 993 both right, 496 only Flash, 202 only the reference. Flash is a little better at mid lengths,
+but the shape is the same: near-perfect up to 3 digits, then a collapse. Side-by-side grids (Flash, reference,
+difference): <a href="compare.html">compare.html</a>. Interactive:
+<a href="inhead_arithmetic.html">inhead_arithmetic</a>.</p>
+<h2>5. Error anatomy (no-think, wrong but well-formed answers)</h2>
+<p><code>python3 longmul.py analyze &lt;results.csv&gt;...</code>. Groups are the 3-digit chunks that map to "… million", "… thousand".</p>
+<table>
+<tr><th></th><th>Ref 27B (5,070 grid)</th><th>Flash (169)</th><th>Flash (5,070 grid)</th></tr>
+<tr><td>Wrong but parseable</td><td>3,681</td><td>119</td><td>3,452</td></tr>
+<tr><td>Leading group right</td><td>85%</td><td>93%</td><td>89%</td></tr>
+<tr><td>Error confined to the low half of the digits</td><td>45%</td><td>45%</td><td>49%</td></tr>
+<tr><td>Median share of leading digits right</td><td>42%</td><td>42%</td><td>44%</td></tr>
+<tr><td>Only one group wrong</td><td>22%</td><td>24%</td><td>26%</td></tr>
+<tr><td>Off by exactly ±10^k (single carry slip)</td><td>4%</td><td>6%</td><td>6%</td></tr>
+<tr><td>Answer = one operand (ignored the short number)</td><td>6%</td><td>5%</td><td>4%</td></tr>
+<tr><td>Short operand added at wrong place value</td><td>3%</td><td>2%</td><td>1%</td></tr>
+<tr><td>Wrong group count (dropped/added a scale group)</td><td>7%</td><td>3%</td><td>4%</td></tr>
+<tr><td>Top wrong group receives a carry (chance ≈ 30%)</td><td>39%</td><td>38%</td><td>39%</td></tr>
+</table>
+<p>Reading:</p>
+<ul>
+<li><strong>It's not mainly carry slips.</strong> Clean ±10^k errors are 4–6%, and carries into the first wrong group are only
+  modestly enriched (39% vs 30% chance).</li>
+<li><strong>The leading group is almost always right, then it drifts.</strong> The model gets the magnitude and first group right,
+  then produces plausible but wrong groups for the rest (often several groups). That fits emitting most-significant
+  first with no scratchpad: it commits to the first group (which mostly depends on the leading digits) and has to
+  improvise the rest.</li>
+<li><strong>Two distinctive failure modes</strong> cover ~9%: echoing the long operand unchanged, and adding the short operand at
+  the wrong place value. Both are about alignment, not arithmetic.</li>
+<li>Flash and the 27B fail in almost the same way, so this looks like a property of the task and decoding regime
+  rather than of one checkpoint.</li>
+</ul>
+<h2>6. Notable failures and anomalies</h2>
+<ul>
+<li><strong>Sonnet medium, SOTA M, crate version:</strong> asked for <code>num-bigint 0.4</code> while only 0.5.1 was
+pre-fetched (the prompt says the crates are downloaded but not which versions). The offline build failed, and the
+model wrote its own big-integer code rather than retry with 0.5. Counted as is; the other three whitelist runs used 0.5
+or "*" and built fine.</li>
+<li><strong>Budget overshoot:</strong> in-head arms can exceed the 1 h by up to one case (e.g. 3,773 s), because the
+HTTP timeout isn't a total deadline. To be fixed.</li>
+</ul>
+
+<h2>7. Method</h2>
+<p>Hardware: see section 4 (<a href="https://x.com/simonw">@simonw</a> on an NVIDIA DGX Spark; our Qwen runs on an M5 Max MacBook Pro via oMLX; Claude's factoring programs built and graded on an M4 MacBook Air).</p>
+<p>In-head arms: one request per case, one at a time, greedy decoding, 16k-token cap, 1 h per arm. add + words uses <a href="https://x.com/simonw">@simonw</a>'s cases, prompt and grader unchanged; mul + words swaps + for ×. SOTA arms: 1 h of development (Qwen: Python, memory only; Claude: Rust under conditions M / R / L), graded afterwards on fresh cases, factoring on 16 balanced semiprimes per size at 60 s per number.</p>
+<!-- GEN:stamp -->
+<p><small>Tables generated from <code>summary-data.js</code> (2026-10-06T19:32:08.189481+00:00 UTC).</small></p>
+<!-- /GEN:stamp -->
+</body>
+</html>
