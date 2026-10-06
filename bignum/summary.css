@@ -70,9 +70,9 @@ svg text{fill:var(--fg)}
 #frtable{margin-top:12px;font-size:18px}
 #frtable td,#frtable th{text-align:right}#frtable td:first-child,#frtable th:first-child{text-align:left}
 #frtable tr.off td{color:var(--muted)}
-#sotatable{font-size:17px;overflow-x:auto}#sotatable table{border-collapse:collapse;width:100%}
-#sotatable td,#sotatable th{padding:6px 8px;vertical-align:top;text-align:left;border-bottom:1px solid var(--line, #8884)}
-#sotatable td.num{text-align:right;white-space:nowrap}#sotatable .bar{display:inline-block;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+#sotatable,#eptable{font-size:17px;overflow-x:auto}#sotatable table,#eptable table{border-collapse:collapse;width:100%}
+#sotatable td,#sotatable th,#eptable td,#eptable th{padding:6px 8px;vertical-align:top;text-align:left;border-bottom:1px solid var(--line, #8884)}
+#sotatable td.num,#eptable td.num{text-align:right;white-space:nowrap}#sotatable .bar{display:inline-block;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
 [hidden]{display:none!important}
 .chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;font-size:18px}
 .chips .lbl{font-weight:700;margin-right:4px}

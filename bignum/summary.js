@@ -783,6 +783,7 @@ function renderFrontier() {
   // three charts, one per metric; each draws into fr-<metric> with its caption in frtitle-<metric>
   for (const m of FR_METRICS) { frMetric = m; if (frId('fr')) drawFrChart(series, shown); }
   renderFrTable(series, isOn);
+  renderEpisodes(shown);
 }
 // charts drawn = those whose fr-<metric> container exists on the page
 const isRefs = se => !!(se.run.solution && se.run.solution.cond === 'R');
@@ -910,6 +911,18 @@ function drawFrChart(series, shown) {
   frId('fr').innerHTML = s + '</svg>';
 }
 const COND_WORDS = { M: 'memory only', R: 'web references', L: 'anything goes' };
+function episodesOf(tl) {
+  const steps = tl.reach || [], info = tl.episodes || [];
+  const eps = [{ from: 0, to: steps.length ? steps[0][0] : tl.stopped, d: null }]
+    .concat(steps.map(([m, d], k) => ({ from: m, to: k + 1 < steps.length ? steps[k + 1][0] : tl.stopped, d })));
+  eps.forEach((e, k) => Object.assign(e, info[k] ? { solution: info[k].solution, measured: info[k].measured } : {}));
+  return eps;
+}
+function episodeTip(se, e) {
+  return '<strong>' + esc(se.run.model + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</strong><br>minutes ' + e.from + '–' + e.to +
+    ' · ' + (e.d == null ? 'writing' : 'reach d = ' + e.d) + (e.solution ? '<br>' + esc(e.solution) : '') +
+    (e.measured ? '<br><em>' + esc(e.measured) + '</em>' : '');
+}
 // one bar per run on a 60-minute axis: grey until the first measured result, then one segment per reach level
 // (largest d its program factored within 60 s, by the model's own tests), shaded darker for more digits
 function timelineChart(ss) {
@@ -925,14 +938,12 @@ function timelineChart(ss) {
     s += '<text class="ax" x="' + (ml - 10) + '" y="' + (y + h / 2 + 5) + '" text-anchor="end" style="font-size:15px">' +
       esc(se.run.model.replace('claude-', '').replace(/-5-5$/, ' 5.5') + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</text>';
     const first = steps.length ? steps[0][0] : tl.stopped;
-    s += '<rect x="' + xs(0) + '" y="' + y + '" width="' + (xs(first) - xs(0)) + '" height="' + h + '" fill="var(--fg)" fill-opacity="0.12">' +
-      '<title>' + esc(se.label + ': writing and building, 0–' + first + ' min') + '</title></rect>';
+    s += '<rect class="tlseg" data-s="' + esc(se.id) + '" data-k="0" x="' + xs(0) + '" y="' + y + '" width="' + (xs(first) - xs(0)) + '" height="' + h + '" fill="var(--fg)" fill-opacity="0.12"></rect>';
     steps.forEach(([m, d], k) => {
       const m1 = k + 1 < steps.length ? steps[k + 1][0] : tl.stopped, w = xs(m1) - xs(m);
-      s += '<rect x="' + xs(m) + '" y="' + y + '" width="' + Math.max(0, w) + '" height="' + h + '" fill="' + c + '" fill-opacity="' + shade(d) +
-        '"><title>' + esc(se.label + ': reach d = ' + d + ' from minute ' + m + ' to ' + m1) + '</title></rect>';
+      s += '<rect class="tlseg" data-s="' + esc(se.id) + '" data-k="' + (k + 1) + '" x="' + xs(m) + '" y="' + y + '" width="' + Math.max(0, w) + '" height="' + h + '" fill="' + c + '" fill-opacity="' + shade(d) + '"></rect>';
       if (w >= 22) s += '<text x="' + (xs(m) + w / 2) + '" y="' + (y + h / 2 + 5) + '" text-anchor="middle" style="font-size:13px;fill:' +
-        (shade(d) > 0.55 ? '#fff' : 'var(--fg)') + '">' + d + '</text>';
+        (shade(d) > 0.55 ? '#fff' : 'var(--fg)') + ';pointer-events:none">' + d + '</text>';
     });
     s += '<line x1="' + xs(tl.last_edit) + '" x2="' + xs(tl.last_edit) + '" y1="' + (y - 3) + '" y2="' + (y + h + 3) + '" stroke="var(--fg)" stroke-width="2.5">' +
       '<title>' + esc(se.label + ': last code change at ' + tl.last_edit + ' min') + '</title></line>';
@@ -970,6 +981,16 @@ function codingScatter(ss) {
       '<text class="ax" x="' + (x + 12) + '" y="' + (y + 5) + '" style="font-size:15px">' + esc(({ M: 'memory only', R: 'web references', L: 'anything goes' }[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '')) + '</text></g>';
   });
   return s + '</svg>';
+}
+function renderEpisodes(shown) {
+  const el = document.getElementById('eptable'); if (!el) return;
+  const rows = [];
+  shown.filter(se => !se.sub && se.run.solution && se.run.solution.timeline).forEach(se => episodesOf(se.run.solution.timeline).forEach(e =>
+    rows.push('<tr><td>' + esc(COND[se.run.solution.cond] || '') + '</td><td><span style="color:' + seriesStyle(se).color + '">■</span> ' +
+      esc(se.run.model + ' · ' + se.run.level) + '</td><td class="num">' + e.from + '–' + e.to + ' min</td><td class="num">' +
+      (e.d == null ? '<em>writing</em>' : '<strong>' + e.d + '</strong>') + '</td><td>' + esc(e.solution || '–') + '</td><td>' + esc(e.measured || '') + '</td></tr>')));
+  el.innerHTML = rows.length ? '<table><thead><tr><th>condition</th><th>model · effort</th><th class="num">minutes</th><th class="num">reach d</th>' +
+    '<th>solution at this point</th><th>measured</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>' : '';
 }
 function renderFrTable(series, isOn) {
   document.getElementById('frtable').innerHTML = '<table><thead><tr><th>run</th><th>frontier d</th><th>first failure d</th>' +
@@ -1398,7 +1419,18 @@ ov?.addEventListener('keydown', e => {
   if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openRun(g); }
 });
 window.addEventListener('resize', () => { hideTip(); hideFrTip(); });
-document.querySelectorAll('.frchart').forEach(frEl => {
+document.getElementById('fr-timeline')?.addEventListener('mousemove', e => {
+  const g = e.target.closest('.tlseg'), wrap = e.currentTarget.closest('.frwrap'), tip = wrap.querySelector('.frtip');
+  if (!g) { tip.style.display = 'none'; return; }
+  const se = frontierSeries().find(x => x.id === g.dataset.s); if (!se) return;
+  const ep = episodesOf(se.run.solution.timeline)[+g.dataset.k]; if (!ep) return;
+  tip.innerHTML = episodeTip(se, ep); tip.style.display = 'block';
+  const wb = wrap.getBoundingClientRect();
+  tip.style.left = Math.max(4, Math.min(e.clientX - wb.left + 14, wb.width - tip.offsetWidth - 4)) + 'px';
+  tip.style.top = (e.clientY - wb.top + 14) + 'px';
+});
+document.getElementById('fr-timeline')?.addEventListener('mouseleave', hideFrTip);
+document.querySelectorAll('.frchart:not(#fr-timeline)').forEach(frEl => { // the timeline has its own tooltip
 frEl.addEventListener('mousemove', e => { const g = e.target.closest('.frpt'); if (g) showFrTip(g, e); else hideFrTip(); });
 frEl.addEventListener('mouseleave', hideFrTip);
 frEl.addEventListener('focusin', e => { const g = e.target.closest('.frpt'); if (g) showFrTip(g); });
