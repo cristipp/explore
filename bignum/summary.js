@@ -782,6 +782,8 @@ function renderFrontier() {
   renderFrTable(series, isOn);
 }
 const FR_METRICS = ['time', 'evals', 'coding'];
+// with the fine frontier off, only fully factored sizes are drawn (partial sizes belong to the fine search)
+const frKeep = (t, se) => frFine || (t.cap !== 'skipped' && (t.passed || 0) >= (t.k || se.f.k || 1));
 const frId = id => document.getElementById(id + '-' + frMetric);
 function drawFrChart(series, shown) {
   const timeView = frMetric !== 'evals';
@@ -791,7 +793,7 @@ function drawFrChart(series, shown) {
     frId('fr').innerHTML = codingScatter(shown.filter(se => !se.sub && se.run.solution));
     return;
   }
-  const allD = uniq([].concat(...series.map(se => (se.f.points || []).concat(se.f.tested.map(t => t.d)))))
+  const allD = uniq([].concat(...series.map(se => (frFine ? se.f.points || [] : []).concat(se.f.tested.filter(t => frKeep(t, se)).map(t => t.d)))))
     .filter(d => d > 0).sort((a, b) => a - b);
   // keep fine-frontier marks inside the x range (they don't get grid lines/labels of their own)
   const fineDs = series.map(se => frFine && !se.sub && fineOf(se.run) ? fineOf(se.run).fine_frontier : null).filter(d => d > 0);
@@ -858,7 +860,7 @@ function drawFrChart(series, shown) {
   shown.forEach(se => {
     const st = seriesStyle(se), si = series.indexOf(se);
     const ts = se.f.tested.filter(t => t.d > 0).slice().sort((a, b) => a.d - b.d)
-      .filter(t => { const v = yval(t, se); return v != null && (!timeView || v > 0); });
+      .filter(t => { const v = yval(t, se); return frKeep(t, se) && v != null && (!timeView || v > 0); });
     if (!ts.length) return;
     s += '<g opacity="' + st.opacity + '">';
     s += '<path d="' + ts.map((t, j) => (j ? 'L' : 'M') + xs(t.d).toFixed(1) + ',' + ys(yval(t, se)).toFixed(1)).join('') +
