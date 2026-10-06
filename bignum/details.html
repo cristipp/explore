@@ -25,7 +25,7 @@ length: Flash scores 1,489/5,070 on <a href="https://x.com/simonw">@simonw</a>'s
 <li><strong>Factoring in the head stops at about 8-digit products.</strong> With thinking, both Qwen models factor
 the 13 easiest numbers (Flash medium: 16), then run into the 16k-token limit or the 1 h budget (19–30 of 91 attempted).
 Without thinking: 2–3/91.</li>
-<li><strong>Writing a program from training data solves add + words and mul + words outright.</strong> Given an hour, no
+<li><strong>Writing a program from training data memories solves add + words and mul + words outright.</strong> Given an hour, no
 internet and no libraries (Python), both Qwen models at high effort write converters that score 169/169 on each task
 and 169/169 on a hidden set of fresh cases.</li>
 <li><strong>Factoring by program reaches 37–41 digits per prime.</strong> Sonnet medium and Opus max, given an hour in
@@ -57,7 +57,7 @@ no web and no crates they come within 1 digit of the library-based best (40 vs 4
 or below their no-web, no-crates twins (Sonnet 37 vs 40, Opus 40 = 40).</li>
 <li><strong>Above a competency threshold the model doesn't matter: supported.</strong> Sonnet medium (no web, no crates)
 matches Opus max (40 = 40); the spread over all six runs is 37–41 digits per prime.</li>
-<li><strong>A self-inflicted handicap (Sonnet M):</strong> it wrote <code>num-bigint = "0.4"</code> from training data, but
+<li><strong>A self-inflicted handicap (Sonnet M):</strong> it wrote <code>num-bigint = "0.4"</code> from training data memories, but
 the pre-fetched whitelist was 0.5.1. The offline build failed with cargo naming the available version, and Sonnet then
 dropped all crates and wrote its own big-integer arithmetic instead of switching to 0.5. A dumb error, but within the
 rules, so the run counts as is; it still reached 40.</li>

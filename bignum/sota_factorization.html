@@ -13,7 +13,7 @@
 <p class="intro">Each model writes the best factoring program it can in 1 h; the programs are graded afterwards.</p>
 <p class="intro"><strong>Hypotheses</strong>, stated before the runs: (1) a competent coder converges on the state of the art whatever the constraints:
 with libraries it calls the best library, with references but no libraries it implements the best algorithm, and from
-training data alone it still implements the best algorithm. (2) Above a competency threshold, the model doesn't matter. To
+training data memories alone it still implements the best algorithm. (2) Above a competency threshold, the model doesn't matter. To
 test both, Sonnet 5.5 medium and Opus 5.5 max each ran under three conditions (L, R, M below).</p>
 <p class="intro"><strong>Verdict: both supported.</strong> (1) All six runs built a self-initialising quadratic sieve, the standard
 best method at these sizes. Opus with libraries used the <code>rusqsieve</code> crate and reached 41 digits per prime;
