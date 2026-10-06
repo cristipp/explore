@@ -15,11 +15,12 @@
 with libraries it calls the best library, with references but no libraries it implements the best algorithm, and from
 training data memories alone it still implements the best algorithm. (2) Above a competency threshold, the model doesn't matter. To
 test both, Sonnet 5.5 medium and Opus 5.5 max each ran under three conditions (L, R, M below).</p>
-<p class="intro"><strong>Verdict: both supported.</strong> (1) All six runs built a self-initialising quadratic sieve, the standard
+<p class="intro"><strong>Verdict: (1) supported; (2) mostly: the model matters, but by a thin margin.</strong> (1) All six runs built a self-initialising quadratic sieve, the standard
 best method at these sizes. Opus with libraries used the <code>rusqsieve</code> crate and reached 41 digits per prime;
 with no web and no crates both models reached 40. No run used the web, yet the web, no crates condition (R) changed
 behaviour: both R runs stopped after about 20 minutes (Sonnet 19, Opus 21), against 38–52 minutes for the other four, and
-scored at or below their no-web, no-crates twins (Sonnet 37 vs 40, Opus 40 = 40). (2) Sonnet medium matches Opus max with no web and no crates (40 = 40), and all six land within 37–41. What
+scored at or below their no-web, no-crates twins (Sonnet 37 vs 40, Opus 40 = 40). (2) Opus max is at or above Sonnet medium in every condition, by 0 to 3 digits per prime: anything goes 41 vs 39,
+web, no crates 40 vs 37, no web, no crates 40 = 40. All six land within 37–41. What
 differs is the solution each model chose and how long it took to write it (19–53 min).</p>
 <div class="taskbar">
   <span id="live" role="status" aria-live="polite"></span>
