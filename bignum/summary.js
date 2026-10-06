@@ -12,7 +12,7 @@ const metricLabel = (m, t) => METRICS.find(x => x[0] === m)[1]; // same wording 
 const codeSec = r => (r && r.code_seconds > 0) ? r.code_seconds : 0;
 const ORDER = {
   task: ['words', 'mul', 'factor'],
-  mode: ['nothink', 'think', 'sota_rust_M', 'sota_rust_R', 'sota_rust_L'],
+  mode: ['nothink', 'think', 'sota_rust_L', 'sota_rust_R', 'sota_rust_M'],
   level: ['none', 'grid', 'minimal', 'low', 'medium', 'high', 'max']
 };
 const PALETTE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9', '#D55E00', '#8C6BB1', '#999933',
@@ -717,9 +717,13 @@ const noProg = se => se.f.tested.length > 0 && se.f.tested.every(t => t.cap === 
 const frDefaultOn = se => !noProg(se);
 // frOff lists series toggled AWAY from their default (no-program runs default off, others on)
 const frIsOn = se => frDefaultOn(se) !== frOff.includes(se.id);
+// SOTA conditions, least to most constrained: anything goes, web references, memory only
+const COND_ORDER = ['L', 'R', 'M'];
 function frontierSeries() {
   const out = [];
-  const rs = RUNS.filter(r => r.frontier && Array.isArray(r.frontier.tested));
+  const condRank = r => rank(COND_ORDER, r.solution ? r.solution.cond : '');
+  const rs = RUNS.filter(r => r.frontier && Array.isArray(r.frontier.tested))
+    .sort((a, b) => String(a.model).localeCompare(b.model) || condRank(a) - condRank(b));
   rs.forEach(r => {
     const dup = rs.filter(x => x.model === r.model && x.arm === r.arm).length > 1;
     const base = r.model_short + '/' + r.arm + (dup ? '/' + r.source : '');
@@ -1288,7 +1292,7 @@ function renderLive(flash, err) {
 }
 const COND = { M: 'M · memory only', R: 'R · web references', L: 'L · anything goes' };
 function renderSota() {
-  const rs = RUNS.filter(r => r.solution).sort((a, b) => rank(['M', 'R', 'L'], a.solution.cond) - rank(['M', 'R', 'L'], b.solution.cond) ||
+  const rs = RUNS.filter(r => r.solution).sort((a, b) => rank(COND_ORDER, a.solution.cond) - rank(COND_ORDER, b.solution.cond) ||
     String(a.model).localeCompare(b.model));
   const el = document.getElementById('sotatable');
   ['sota', 'sotatable'].forEach(id => { document.getElementById(id).hidden = !rs.length; });
