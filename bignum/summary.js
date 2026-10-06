@@ -453,7 +453,7 @@ function renderPanel(p, idx) {
   let broken = false;
   FIELDS.forEach(f => {
     const opts = broken ? [] : optionsFor(p, f);
-    if (f === 'source' && opts.length <= 1 && !broken && opts.includes(p.source)) return; // hide when unambiguous
+    if ((f === 'source' || f === 'arm') && opts.length <= 1 && !broken && opts.includes(p[f])) return; // hide when unambiguous (e.g. arm = nothink)
     const lab = document.createElement('label');
     lab.textContent = LABELS[f];
     const s = document.createElement('select');
