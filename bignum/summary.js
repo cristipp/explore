@@ -217,7 +217,7 @@ let ovTask = null; // overview task; null = follow the first panel
 let uid = 0;
 let ovY = 'acc';     // overview y axis: 'acc' | 'frontier' (frontier only offered when the task has it)
 let frMetric = 'time'; // frontier chart y: 'evals' | 'time' | 'coding'
-let frFine = false; // show partial factorization failures + fine-frontier markers (off by default)
+let frFine = false; // show partial factorization success + fine-frontier markers (off by default)
 let frOff = []; // frontier series ids toggled off (new runs show by default)
 let ovModes = null; // null = all modes; else array of modes to plot (may include modes the task lacks)
 
