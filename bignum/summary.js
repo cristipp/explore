@@ -926,6 +926,13 @@ function episodesOf(tl) {
   eps.forEach((e, k) => Object.assign(e, info[k] ? { solution: info[k].solution, measured: info[k].measured } : {}));
   return eps;
 }
+function finalTip(se) {
+  const tl = se.run.solution.timeline, steps = stepsOf(tl), last = steps[steps.length - 1], f = tl.final || {};
+  const firstAt = tl.reach_code && tl.reach_code.length ? tl.reach_code[tl.reach_code.length - 1][0] : null;
+  return '<strong>' + esc(se.run.model + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</strong><br>final code version at ' +
+    tl.last_edit + ' min (graded as is)' + (last ? '<br>same reach d = ' + last[1] + ' as the code written at ' + firstAt + ' min' : '') +
+    (f.changes ? '<br><strong>changed since:</strong> ' + esc(f.changes) : '') + (f.effect ? '<br><strong>effect:</strong> ' + esc(f.effect) : '');
+}
 function episodeTip(se, e) {
   return '<strong>' + esc(se.run.model + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</strong><br>minutes ' + e.from + '–' + e.to +
     ' · ' + (e.d == null ? 'writing' : 'reach d = ' + e.d) +
@@ -954,8 +961,8 @@ function timelineChart(ss) {
       if (w >= 22) s += '<text x="' + (xs(m) + w / 2) + '" y="' + (y + h / 2 + 5) + '" text-anchor="middle" style="font-size:13px;fill:' +
         (shade(d) > 0.55 ? '#fff' : 'var(--fg)') + ';pointer-events:none">' + d + '</text>';
     });
-    s += '<line x1="' + xs(tl.last_edit) + '" x2="' + xs(tl.last_edit) + '" y1="' + (y - 3) + '" y2="' + (y + h + 3) + '" stroke="var(--fg)" stroke-width="2.5">' +
-      '<title>' + esc(se.label + ': final code version at ' + tl.last_edit + ' min') + '</title></line>';
+    s += '<line x1="' + xs(tl.last_edit) + '" x2="' + xs(tl.last_edit) + '" y1="' + (y - 3) + '" y2="' + (y + h + 3) + '" stroke="var(--fg)" stroke-width="2.5" pointer-events="none"/>' +
+      '<rect class="tlfinal" data-s="' + esc(se.id) + '" x="' + (xs(tl.last_edit) - 6) + '" y="' + (y - 3) + '" width="12" height="' + (h + 6) + '" fill="transparent"/>';
     s += '<rect x="' + xs(tl.stopped) + '" y="' + y + '" width="' + (xs(60) - xs(tl.stopped)) + '" height="' + h +
       '" fill="none" stroke="var(--rule)" stroke-dasharray="4 3"><title>' + esc(se.label + ': unused, ' + (60 - tl.stopped).toFixed(0) + ' min') + '</title></rect>' +
       '<text class="ax" x="' + (xs(tl.stopped) + 6) + '" y="' + (y + h / 2 + 5) + '" style="font-size:13px">' + (60 - tl.stopped).toFixed(0) + ' min unused</text>';
@@ -1429,11 +1436,12 @@ ov?.addEventListener('keydown', e => {
 });
 window.addEventListener('resize', () => { hideTip(); hideFrTip(); });
 document.getElementById('fr-timeline')?.addEventListener('mousemove', e => {
-  const g = e.target.closest('.tlseg'), wrap = e.currentTarget.closest('.frwrap'), tip = wrap.querySelector('.frtip');
+  const g = e.target.closest('.tlseg, .tlfinal'), wrap = e.currentTarget.closest('.frwrap'), tip = wrap.querySelector('.frtip');
   if (!g) { tip.style.display = 'none'; return; }
   const se = frontierSeries().find(x => x.id === g.dataset.s); if (!se) return;
-  const ep = episodesOf(se.run.solution.timeline)[+g.dataset.k]; if (!ep) return;
-  tip.innerHTML = episodeTip(se, ep); tip.style.display = 'block';
+  if (g.classList.contains('tlfinal')) tip.innerHTML = finalTip(se);
+  else { const ep = episodesOf(se.run.solution.timeline)[+g.dataset.k]; if (!ep) return; tip.innerHTML = episodeTip(se, ep); }
+  tip.style.display = 'block';
   const wb = wrap.getBoundingClientRect();
   tip.style.left = Math.max(4, Math.min(e.clientX - wb.left + 14, wb.width - tip.offsetWidth - 4)) + 'px';
   tip.style.top = (e.clientY - wb.top + 14) + 'px';
