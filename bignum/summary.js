@@ -771,7 +771,6 @@ function renderFrontier() {
       '</label>';
   };
   lg.innerHTML = '<span class="lbl">Show</span><button type="button" data-frq="all">all</button>' +
-    '<span class="note">' + shapeIcon(shapeOf('sota_rust_M'), 'var(--muted)') + ' SOTA (Rust, 1 h)</span>' +
     series.map(chip).join('');
   if (fv != null) { const i = [...lg.querySelectorAll('input')].find(x => x.value === fv); if (i) i.focus({ preventScroll: true }); }
 
