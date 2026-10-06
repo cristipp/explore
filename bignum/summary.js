@@ -266,23 +266,21 @@ function defaults(t) {
   if (a && b) return [selFromRun(a), selFromRun(b)];
   return rs.slice(0, 2).map(r => selFromRun(r));
 }
-// default view (Flash, no thinking): #1 add + words on the 169 cases paired with the thinking arms; #2 = #1 on the full grid;
-// #3 / #4 = #2 on mul + words / factoring (full grid; until a task has one, the 169-case run shows and the override waits)
+// default view: #1 @simonw's full no-think grid (add + words); #2 Flash, mul + words full grid (follows #1: model and task
+// overridden, arm inherited, so it shows the 169-case run until the grid exists); #3 = #2 on factoring; #4 = #2 with thinking
 function defaultPanels() {
-  const flash = RUNS.filter(r => r.task === 'words' && /flash/i.test(r.model));
-  const base = flash.find(r => r.arm === 'nothink');
-  const ps = base ? [newPanel(selFromRun(base))] : defaults().slice(0, 1).map(newPanel);
-  const follow = (f, v, src = ps[0]) => {
-    const q = newPanel(Object.assign({}, src, { from: src.id, ov: { [f]: true }, ovv: { [f]: v } }));
-    q[f] = v;
+  const ref = RUNS.find(r => r.task === 'words' && /simonw/i.test(r.model) && r.arm === 'nothink-grid');
+  const flash = RUNS.find(r => /flash/i.test(r.model) && r.task === 'mul');
+  if (!ref || !flash) { panels = defaults().map(newPanel); propagate(); return panels; }
+  const ps = [newPanel(selFromRun(ref))];
+  const follow = (src, ov) => {
+    const q = newPanel(Object.assign({}, src, ov, { from: src.id, ov: Object.fromEntries(Object.keys(ov).map(k => [k, true])), ovv: ov }));
     ps.push(q);
+    return q;
   };
-  if (ps.length) {
-    if (flash.some(r => r.arm === 'nothink-grid')) follow('arm', 'nothink-grid');
-    const grid = ps[ps.length - 1];
-    if (RUNS.some(r => r.task === 'mul')) follow('task', 'mul', grid);
-    if (RUNS.some(r => r.task === 'factor')) follow('task', 'factor', grid);
-  }
+  const mul = follow(ps[0], { model: flash.model, task: 'mul' });
+  follow(mul, { task: 'factor' });
+  follow(mul, { mode: 'think', arm: 'think-high' });
   panels = ps;
   propagate();
   return panels;
