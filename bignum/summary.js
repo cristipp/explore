@@ -1422,9 +1422,6 @@ document.getElementById('add')?.addEventListener('click', () => {
 document.getElementById('reset')?.addEventListener('click', () => {
   ovTask = null; defaultPanels(); ovModes = null; renderAll();
 });
-document.getElementById('resetlink')?.addEventListener('click', e => { // same as the button, without a page reload
-  e.preventDefault(); document.getElementById('reset').click();
-});
 document.getElementById('pause').addEventListener('click', e => {
   paused = !paused;
   e.target.textContent = paused ? 'Resume auto-refresh' : 'Pause auto-refresh';
