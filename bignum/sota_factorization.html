@@ -17,9 +17,9 @@ memory alone it still implements the best algorithm. (2) Above a competency thre
 test both, Sonnet 5.5 medium and Opus 5.5 max each ran under three conditions (L, R, M below).</p>
 <p class="intro"><strong>Verdict: both supported.</strong> (1) All six runs built a self-initialising quadratic sieve, the standard
 best method at these sizes. Opus with libraries used the <code>rusqsieve</code> crate and reached 41 digits per prime;
-from memory alone both models reached 40. No run used the web, yet the web, no crates condition (R) changed
+with no web and no crates both models reached 40. No run used the web, yet the web, no crates condition (R) changed
 behaviour: both R runs stopped after about 20 minutes (Sonnet 19, Opus 21), against 38–52 minutes for the other four, and
-scored at or below their memory-only twins (Sonnet 37 vs 40, Opus 40 = 40). (2) Sonnet medium matches Opus max from memory (40 = 40), and all six land within 37–41. What
+scored at or below their no-web, no-crates twins (Sonnet 37 vs 40, Opus 40 = 40). (2) Sonnet medium matches Opus max with no web and no crates (40 = 40), and all six land within 37–41. What
 differs is the solution each model chose and how long it took to write it (19–53 min).</p>
 <div class="taskbar">
   <span id="live" role="status" aria-live="polite"></span>
@@ -28,7 +28,7 @@ differs is the solution each model chose and how long it took to write it (19–
 <h2 id="sota">What each model built</h2>
 <p class="note">Each model had 1 h to write the best factoring program it could, in Rust, with the grading rules stated
 up front. L = anything goes (any crate + web), R = web, no crates (web allowed but never used; std + the big-int whitelist), M =
-memory only (std + a small big-int crate whitelist). Programs differ only in which solution the model chose and how long it took to write; the
+no web, no crates (std + a small big-int crate whitelist). Programs differ only in which solution the model chose and how long it took to write; the
 chart below checks that their runtime performance is indeed similar.</p>
 <p class="note">Hardware: the models ran as Claude Code sessions in the cloud, but built, benchmarked and tuned their
 programs on this machine, a MacBook Air with Apple M4 (10 cores) and 32 GB. Grading ran afterwards on the same machine,
@@ -42,7 +42,7 @@ rules, so the run counts as is.</p>
 <h2 id="frontier">How the programs were built and how they run</h2>
 <p class="note" id="frnote">Each SOTA program, graded after its hour on an idle machine: p and q both have d digits,
 with 16 fresh pairs per size and T = 60 s per number. Three views of the same runs; the run selector below applies to
-all three. Color = model; shape (and line style) = condition: ▲ L anything goes, ■ R web, no crates, ● M memory only. By default only fully factored sizes (16/16) are drawn. Tick “partial factorization success” to add the sizes where fewer than 16 pairs were factored (hollow markers), and ◇ at the fine frontier: the exact largest d with 16/16 (galloping + binary search).</p>
+all three. Color = model; shape (and line style) = condition: ▲ L anything goes, ■ R web, no crates, ● M no web, no crates. By default only fully factored sizes (16/16) are drawn. Tick “partial factorization success” to add the sizes where fewer than 16 pairs were factored (hollow markers), and ◇ at the fine frontier: the exact largest d with 16/16 (galloping + binary search).</p>
 <div class="chips" id="frmwrap"><label class="chip"><input type="checkbox" id="franchor"> anchor to tests</label>
   <label class="chip"><input type="checkbox" id="frfine"> partial factorization success</label></div>
 <div class="chips" id="frlegend" role="group" aria-label="Runs shown in the three frontier charts"></div>

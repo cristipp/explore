@@ -17,7 +17,7 @@ const ORDER = {
 };
 const PALETTE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9', '#D55E00', '#8C6BB1', '#999933',
   '#882255', '#44AA99'];
-// shape = condition on the SOTA page (M memory only, R web, no crates, L anything goes); no thinking / thinking in-head
+// shape = condition on the SOTA page (M no web, no crates, R web, no crates, L anything goes); no thinking / thinking in-head
 const SHAPES = { nothink: 'circle', think: 'square', sota_rust_M: 'circle', sota_rust_R: 'square', sota_rust_L: 'triangle' };
 const shapeOf = mode => SHAPES[mode] || (/^sota/.test(mode) ? 'triangle' : 'diamond');
 function rank(list, v) { const i = list.indexOf(v); return i < 0 ? list.length : i; }
@@ -717,7 +717,7 @@ const noProg = se => se.f.tested.length > 0 && se.f.tested.every(t => t.cap === 
 const frDefaultOn = se => !noProg(se);
 // frOff lists series toggled AWAY from their default (no-program runs default off, others on)
 const frIsOn = se => frDefaultOn(se) !== frOff.includes(se.id);
-// SOTA conditions, least to most constrained: anything goes, web no crates, memory only
+// SOTA conditions, least to most constrained: anything goes, web no crates, no web no crates
 const COND_ORDER = ['L', 'R', 'M'];
 function frontierSeries() {
   const out = [];
@@ -915,7 +915,7 @@ function drawFrChart(series, shown) {
     s += '<text class="ax" x="' + (W - mr) + '" y="' + (mt - 10) + '" text-anchor="end" style="font-size:14px">◇ = fine frontier (shared cap)</text>';
   frId('fr').innerHTML = s + '</svg>';
 }
-const COND_WORDS = { M: 'memory only', R: 'web, no crates', L: 'anything goes' };
+const COND_WORDS = { M: 'no web, no crates', R: 'web, no crates', L: 'anything goes' };
 // reach steps anchored to when the winning code was written (default) or to when it was first tested
 const stepsOf = tl => (frAnchorTest ? tl.reach : tl.reach_code || tl.reach) || [];
 function episodesOf(tl) {
@@ -996,7 +996,7 @@ function codingScatter(ss) {
     const st = seriesStyle(se), so = se.run.solution, ff = fineOf(se.run), x = xs(tx(se)), y = ys(ty(se));
     s += '<g><title>' + esc(se.label + ': ' + fmtDur(so.dev_seconds) + ' coding, ' + fmtInt(so.lines) + ' lines' +
       (ff ? ', fine frontier ' + ff.fine_frontier : '')) + '</title>' + shapePath(shapeOf(se.run.mode), x, y, 9) + ' fill="' + st.color + '"/>' +
-      '<text class="ax" x="' + (x + 12) + '" y="' + (y + 5) + '" style="font-size:15px">' + esc(({ M: 'memory only', R: 'web, no crates', L: 'anything goes' }[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '')) + '</text></g>';
+      '<text class="ax" x="' + (x + 12) + '" y="' + (y + 5) + '" style="font-size:15px">' + esc(({ M: 'no web, no crates', R: 'web, no crates', L: 'anything goes' }[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '')) + '</text></g>';
   });
   return s + '</svg>';
 }
@@ -1290,7 +1290,7 @@ function renderLive(flash, err) {
     flashT = setTimeout(() => el.classList.remove('flash'), 1800);
   }
 }
-const COND = { M: 'M · memory only', R: 'R · web, no crates', L: 'L · anything goes' };
+const COND = { M: 'M · no web, no crates', R: 'R · web, no crates', L: 'L · anything goes' };
 function renderSota() {
   const rs = RUNS.filter(r => r.solution).sort((a, b) => rank(COND_ORDER, a.solution.cond) - rank(COND_ORDER, b.solution.cond) ||
     String(a.model).localeCompare(b.model));
