@@ -17,7 +17,8 @@ const ORDER = {
 };
 const PALETTE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9', '#D55E00', '#8C6BB1', '#999933',
   '#882255', '#44AA99'];
-const SHAPES = { nothink: 'circle', think: 'square' };
+// shape = condition on the SOTA page (M memory only, R references, L anything); no thinking / thinking in-head
+const SHAPES = { nothink: 'circle', think: 'square', sota_rust_M: 'circle', sota_rust_R: 'square', sota_rust_L: 'triangle' };
 const shapeOf = mode => SHAPES[mode] || (/^sota/.test(mode) ? 'triangle' : 'diamond');
 function rank(list, v) { const i = list.indexOf(v); return i < 0 ? list.length : i; }
 function sortOpts(field, vals, rs) {
@@ -911,7 +912,7 @@ function codingScatter(ss) {
   ss.forEach(se => {
     const st = seriesStyle(se), so = se.run.solution, ff = fineOf(se.run), x = xs(tx(se)), y = ys(ty(se));
     s += '<g><title>' + esc(se.label + ': ' + fmtDur(so.dev_seconds) + ' coding, ' + fmtInt(so.lines) + ' lines' +
-      (ff ? ', fine frontier ' + ff.fine_frontier : '')) + '</title>' + shapePath('triangle', x, y, 9) + ' fill="' + st.color + '"/>' +
+      (ff ? ', fine frontier ' + ff.fine_frontier : '')) + '</title>' + shapePath(shapeOf(se.run.mode), x, y, 9) + ' fill="' + st.color + '"/>' +
       '<text class="ax" x="' + (x + 12) + '" y="' + (y + 5) + '" style="font-size:15px">' + esc(so.cond + (ff ? ' · ' + ff.fine_frontier : '')) + '</text></g>';
   });
   return s + '</svg>';
