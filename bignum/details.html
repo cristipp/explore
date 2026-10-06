@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>bignum results</title>
+<title>bignum details</title>
 <link rel="stylesheet" href="style.css">
 <style>.wide{overflow-x:auto} td small{color:var(--muted)} td.np{color:var(--muted)} th{text-align:left}</style>
 </head>
 <body>
-<nav><a href="index.html">↑ bignum</a> · <a href="results.html">results</a> · <a href="inhead_arithmetic.html">inhead_arithmetic</a> · <a href="sota_factorization.html">sota_factorization</a></nav>
-<h1>bignum — results</h1>
+<nav><a href="index.html">↑ bignum</a> · <a href="inhead_arithmetic.html">inhead_arithmetic</a> · <a href="sota_factorization.html">sota_factorization</a> · <a href="details.html">details</a></nav>
+<h1>bignum — details</h1>
 <p><strong>Status: overnight runs complete (2026-10-06).</strong> SOTA experiment graded; fine frontiers at T = 60 s for
 all factoring programs. The tables below are generated
 from the run data; the findings are written by hand. Interactive charts:
@@ -71,7 +71,7 @@ program). † = the 1 h arm budget ran out
 before all cases were tried.</p>
 <!-- GEN:ablation -->
 <h3>add + words</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th><th>SOTA (memory only, Python, high)</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>44/169<br><small>2 min</small></td><td>162/169<br><small>58 min</small></td><td>167/169<br><small>31 min</small></td><td>169/169<br><small>1.0 h</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>48/169<br><small>1 min</small></td><td>169/169<br><small>11 min</small></td><td>169/169<br><small>10 min</small></td><td>169/169<br><small>26 min</small></td></tr></table></div>
-<h3>mul + words</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th><th>SOTA (memory only, Python, high)</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>16/169<br><small>30 min</small></td><td>91/169 †<br><small>1.0 h · 93 tried</small></td><td>114/169 †<br><small>1.1 h · 117 tried</small></td><td>169/169<br><small>36 min</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>19/169<br><small>1 min</small></td><td>162/169<br><small>1.3 h</small></td><td>168/169<br><small>56 min</small></td><td>169/169<br><small>36 min</small></td></tr></table></div>
+<h3>mul + words</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th><th>SOTA (memory only, Python, high)</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>16/169<br><small>30 min</small></td><td>91/169 †<br><small>1.0 h · 93 tried</small></td><td>131/169 †<br><small>1.4 h · 134 tried</small></td><td>169/169<br><small>36 min</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>19/169<br><small>1 min</small></td><td>162/169<br><small>1.3 h</small></td><td>168/169<br><small>56 min</small></td><td>169/169<br><small>36 min</small></td></tr></table></div>
 <h3>factor</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>2/91 ⧗<br><small>28 min · 86 tried</small></td><td>13/91 †<br><small>1.1 h · 19 tried</small></td><td>13/91 †<br><small>1.1 h · 19 tried</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>3/91<br><small>3 min</small></td><td>16/91 †<br><small>1.0 h · 30 tried</small></td><td>13/91 †<br><small>1.0 h · 28 tried</small></td></tr></table></div>
 <!-- /GEN:ablation -->
 
@@ -237,7 +237,7 @@ no difference to their scores.</li>
 <p>Hardware: see section 4 (<a href="https://x.com/simonw">@simonw</a> on an NVIDIA DGX Spark; our Qwen runs on an M5 Max MacBook Pro via oMLX; Claude's factoring programs built and graded on an M4 MacBook Air).</p>
 <p>In-head arms: one request per case, one at a time, greedy decoding, 16k-token cap, 1 h per arm. add + words uses <a href="https://x.com/simonw">@simonw</a>'s cases, prompt and grader unchanged; mul + words swaps + for ×. SOTA arms: 1 h of development (Qwen: Python, memory only; Claude: Rust under conditions M / R / L), graded afterwards on fresh cases, factoring on 16 balanced semiprimes per size at 60 s per number.</p>
 <!-- GEN:stamp -->
-<p><small>Tables generated from <code>summary-data.js</code> (2026-10-06T19:32:08.189481+00:00 UTC).</small></p>
+<p><small>Tables generated from <code>summary-data.js</code> (2026-10-06T19:52:23.582796+00:00 UTC).</small></p>
 <!-- /GEN:stamp -->
 </body>
 </html>
