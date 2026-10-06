@@ -261,7 +261,8 @@ function defaultTask() { const ts = tasks(); return ts.includes('words') ? 'word
 function defaults(t) {
   const rs = RUNS.filter(r => r.task === (t || defaultTask()));
   const flash = rs.filter(r => /flash/i.test(r.model));
-  const a = flash.find(r => r.arm === 'nothink'), b = flash.find(r => r.arm === 'think-medium');
+  // default to the full grid when there is one: 30 cases per cell gives real per-cell accuracy instead of 0/1
+  const a = flash.find(r => r.arm === 'nothink-grid') || flash.find(r => r.arm === 'nothink'), b = flash.find(r => r.arm === 'think-medium');
   if (a && b) return [selFromRun(a), selFromRun(b)];
   return rs.slice(0, 2).map(r => selFromRun(r));
 }
