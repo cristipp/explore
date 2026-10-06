@@ -266,13 +266,21 @@ function defaults(t) {
   if (a && b) return [selFromRun(a), selFromRun(b)];
   return rs.slice(0, 2).map(r => selFromRun(r));
 }
-// default view: #1 = add + words, no thinking; #2 clones #1 with one override, task = mul + words
+// default view (Flash, no thinking): #1 add + words on the 169 cases of the @simonw setup; #2 = #1 on the full grid;
+// #3 = #1 on mul + words; #4 = #1 on factoring. #2-#4 clone #1 with one override each.
 function defaultPanels() {
-  const ps = defaults().slice(0, 1).map(newPanel);
-  if (ps.length && RUNS.some(r => r.task === 'mul')) {
-    const q = newPanel(Object.assign({}, ps[0], { from: ps[0].id, ov: { task: true }, ovv: { task: 'mul' } }));
-    q.task = 'mul';
+  const flash = RUNS.filter(r => r.task === 'words' && /flash/i.test(r.model));
+  const base = flash.find(r => r.arm === 'nothink');
+  const ps = base ? [newPanel(selFromRun(base))] : defaults().slice(0, 1).map(newPanel);
+  const follow = (f, v) => {
+    const q = newPanel(Object.assign({}, ps[0], { from: ps[0].id, ov: { [f]: true }, ovv: { [f]: v } }));
+    q[f] = v;
     ps.push(q);
+  };
+  if (ps.length) {
+    if (flash.some(r => r.arm === 'nothink-grid')) follow('arm', 'nothink-grid');
+    if (RUNS.some(r => r.task === 'mul')) follow('task', 'mul');
+    if (RUNS.some(r => r.task === 'factor')) follow('task', 'factor');
   }
   panels = ps;
   propagate();
