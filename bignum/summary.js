@@ -918,7 +918,7 @@ function codingScatter(ss) {
     const st = seriesStyle(se), so = se.run.solution, ff = fineOf(se.run), x = xs(tx(se)), y = ys(ty(se));
     s += '<g><title>' + esc(se.label + ': ' + fmtDur(so.dev_seconds) + ' coding, ' + fmtInt(so.lines) + ' lines' +
       (ff ? ', fine frontier ' + ff.fine_frontier : '')) + '</title>' + shapePath(shapeOf(se.run.mode), x, y, 9) + ' fill="' + st.color + '"/>' +
-      '<text class="ax" x="' + (x + 12) + '" y="' + (y + 5) + '" style="font-size:15px">' + esc(so.cond + (ff ? ' · ' + ff.fine_frontier : '')) + '</text></g>';
+      '<text class="ax" x="' + (x + 12) + '" y="' + (y + 5) + '" style="font-size:15px">' + esc(({ M: 'memory only', R: 'references', L: 'anything goes' }[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '')) + '</text></g>';
   });
   return s + '</svg>';
 }
