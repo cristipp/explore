@@ -955,14 +955,14 @@ function timelineChart(ss) {
         (shade(d) > 0.55 ? '#fff' : 'var(--fg)') + ';pointer-events:none">' + d + '</text>';
     });
     s += '<line x1="' + xs(tl.last_edit) + '" x2="' + xs(tl.last_edit) + '" y1="' + (y - 3) + '" y2="' + (y + h + 3) + '" stroke="var(--fg)" stroke-width="2.5">' +
-      '<title>' + esc(se.label + ': last code change at ' + tl.last_edit + ' min') + '</title></line>';
+      '<title>' + esc(se.label + ': final code version at ' + tl.last_edit + ' min') + '</title></line>';
     s += '<rect x="' + xs(tl.stopped) + '" y="' + y + '" width="' + (xs(60) - xs(tl.stopped)) + '" height="' + h +
       '" fill="none" stroke="var(--rule)" stroke-dasharray="4 3"><title>' + esc(se.label + ': unused, ' + (60 - tl.stopped).toFixed(0) + ' min') + '</title></rect>' +
       '<text class="ax" x="' + (xs(tl.stopped) + 6) + '" y="' + (y + h / 2 + 5) + '" style="font-size:13px">' + (60 - tl.stopped).toFixed(0) + ' min unused</text>';
   });
   const LEG = [['<rect width="16" height="12" fill="var(--fg)" fill-opacity="0.12"/>', frAnchorTest ? 'writing, before the first measured result' : 'writing, before the first working code'],
     ['<rect width="16" height="12" fill="var(--fg)" fill-opacity="0.6"/>', 'reach d (label): darker = more digits'],
-    ['<line x1="8" x2="8" y1="-2" y2="14" stroke="var(--fg)" stroke-width="2.5"/>', 'last code change'],
+    ['<line x1="8" x2="8" y1="-2" y2="14" stroke="var(--fg)" stroke-width="2.5"/>', 'final code version'],
     ['<rect width="16" height="12" fill="none" stroke="var(--rule)" stroke-dasharray="4 3"/>', 'unused budget']];
   LEG.forEach(([icon, what], j) => {
     const lx = ml + (j % 2) * (W - ml - mr) / 2, ly = H - 38 + Math.floor(j / 2) * 22;
