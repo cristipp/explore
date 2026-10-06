@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foreseeing programs</title>
+<meta name="description" content="Wolfram: if you can foresee a program completely, why run it? Provable: no general foreseer exists, not even one that halves the time. But that is an existence result; Wolfram's &quot;a lot you can't foresee&quot; is a density claim that rests on the Principle of Computational Equivalence, a thesis.">
+<style>
+:root{--bg:#fff;--fg:#111;--muted:#666;--code:#f3f3f3;--rule:#ddd;--link:#0b5cad;
+--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--neutral:#a9a8a2;--grid:#e6e5e0;--card:#f7f7f5;--good:#1b7837;--warn:#b35806;--bad:#c0392b}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--fg:#eee;--muted:#aaa;--code:#222;--rule:#333;--link:#7ab7ff;
+--s1:#3987e5;--s2:#d95926;--s3:#199e70;--neutral:#6f6e69;--grid:#2c2c2a;--card:#1c1c1b;--good:#5fbf6b;--warn:#e0913f;--bad:#e66767}}
+:root[data-theme="dark"]{--bg:#121212;--fg:#eee;--muted:#aaa;--code:#222;--rule:#333;--link:#7ab7ff;
+--s1:#3987e5;--s2:#d95926;--s3:#199e70;--neutral:#6f6e69;--grid:#2c2c2a;--card:#1c1c1b;--good:#5fbf6b;--warn:#e0913f;--bad:#e66767}
+body{background:var(--bg);color:var(--fg);font:22px/1.55 system-ui,-apple-system,sans-serif;max-width:60rem;margin:0 auto;padding:24px 16px}
+a{color:var(--link)}code,pre{background:var(--code);font-size:18px}pre{padding:12px;overflow-x:auto;border-radius:6px}
+table{border-collapse:collapse;display:block;overflow-x:auto}td,th{border:1px solid var(--rule);padding:4px 10px;font-size:18px;vertical-align:top}
+blockquote{color:var(--muted);border-left:4px solid var(--rule);margin-left:0;padding-left:16px;font-size:20px}
+nav{font-size:18px;margin-bottom:12px}li{margin:4px 0}h2{margin-top:2.2em}
+.card{background:var(--card);border-radius:10px;padding:16px;margin:18px 0}
+.def{background:var(--card);border-left:6px solid var(--s3);padding:12px 18px;border-radius:6px;margin:18px 0}
+.chart{position:relative}.chart svg{width:100%;height:auto;display:block;overflow:visible}
+svg text{fill:var(--fg);font-size:15px}svg .muted{fill:var(--muted)}
+button,input{font:inherit;font-size:18px}
+input[type=text],input[type=number]{background:var(--bg);color:var(--fg);border:1px solid var(--rule);border-radius:6px;padding:4px 8px;width:220px;max-width:100%}
+button{background:var(--s1);color:#fff;border:0;border-radius:6px;padding:6px 14px;cursor:pointer}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.tri{display:flex;gap:16px;flex-wrap:wrap}.tri figure{margin:0;text-align:center;font-size:16px;color:var(--muted)}
+.tri canvas{width:330px;max-width:100%;image-rendering:pixelated;height:auto;border:1px solid var(--rule);border-radius:4px}
+td.p{color:var(--good);font-weight:600}td.o{color:var(--warn);font-weight:600}td.h{color:var(--bad);font-weight:600}
+td.num{text-align:right}
+.small{font-size:18px;color:var(--muted)}
+.terms dt{font-weight:700;margin-top:10px}.terms dd{margin-left:0;font-size:19px}
+a.term{color:inherit;text-decoration:underline dotted;text-underline-offset:3px}
+.chain{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 6px;margin:12px 0}
+.chain .node{border:2px solid var(--rule);background:var(--bg);border-radius:8px;padding:8px 10px;text-align:center;line-height:1.3}
+.chain .node .small{font-size:16px}
+.chain .arrow{display:flex;flex-direction:column;align-items:center;font-size:16px;line-height:1.2;font-weight:600}
+.chain .arrow b{font-size:28px;line-height:1}
+.chain .thesis{color:var(--bad)}.chain .proved{color:var(--good)}
+.chainlabel{font-weight:600;font-size:19px;color:var(--muted);margin:14px 0 0}
+@media(max-width:640px){.chain{flex-direction:column}.chain .arrow{flex-direction:row;gap:8px}.chain .arrow b{transform:rotate(90deg)}}
+select{font:inherit;font-size:18px;background:var(--bg);color:var(--fg);border:1px solid var(--rule);border-radius:6px;padding:4px 8px;max-width:100%}
+.row label{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-width:0}.row select{min-width:0;flex:0 1 auto}
+.bugtab td{white-space:nowrap}.bar{display:inline-block;height:12px;border-radius:3px;background:var(--s1);vertical-align:-1px}
+.bar.dim{background:var(--neutral)}.bar.late{background:var(--bad)}.bar.ok{background:var(--good)}
+#bugStrip{display:flex;flex-wrap:wrap;gap:2px}.cellb{width:16px;height:22px;border-radius:3px;cursor:pointer;font-size:13px;line-height:22px;text-align:center;color:#fff}
+.cellb.g{background:var(--good);opacity:.55}.cellb.b{background:var(--bad)}
+#bugCanvas{image-rendering:pixelated;border:1px solid var(--rule);border-radius:4px;max-width:100%}
+</style>
+</head>
+<body>
+<nav><a href="index.html">↑ foresee</a></nav>
+<h1>Can you foresee what a program will do without running it?</h1>
+<p class="small">Report, 6 October 2026. Starting point: two sentences from Stephen Wolfram's essay
+<a href="https://writings.stephenwolfram.com/2026/07/towards-a-theory-of-bugs-the-ruliology-of-the-unexpected/">"Towards a Theory of Bugs:
+The Ruliology of the Unexpected"</a> (21 July 2026), as quoted on X by
+<a href="https://x.com/michael_timbs/status/2107274513516011687">@michael_timbs</a>, who asked what Wolfram meant.</p>
+<blockquote>"if you can completely foresee what a program will do, what's the point of running it? Why not, in effect, just immediately 'write down
+the answer', without ever having to run the program? […] once there's anything you can't foresee, there tends to be a lot you can't
+foresee."</blockquote>
+
+<div class="card" style="border-left:6px solid var(--s3)"><p style="margin-top:0"><strong>Questions this report answers</strong></p>
+<ul style="margin-bottom:0">
+<li>What does "foresee" mean, precisely? (<a href="#s1">section 1</a>)</li>
+<li>The <a class="term" href="#def-halving">halving rule</a>: could one program run every long program in half the time? (<a href="#halving">section 1</a>)</li>
+<li><a class="term" href="#tower">The tower</a>: aim the halving <a class="term" href="#def-foresee">foreseer</a> at its own runs. Does evaluation length collapse? (<a href="#tower">section 1</a>)</li>
+<li>The ladder: what is proved, conjectured, or a <a class="term" href="#def-thesis">thesis</a> about <a class="term" href="#t-irreducible">irreducibility</a>? (<a href="#s3">section 3</a>)</li>
+<li>Is the <a class="term" href="#def-pce">Principle of Computational Equivalence</a> proved, or a thesis? (<a href="#s4">section 4</a>)</li>
+</ul></div>
+
+<div class="card">
+<p style="margin-top:0"><strong>The answer in one picture.</strong> Wolfram's second sentence can be read two ways. The worst-case
+reading reaches a theorem in its second step. The density reading, which is what his words say, reaches none.</p>
+<p class="chainlabel">Worst case: <em>some</em> behaviour can't be foreseen</p>
+<div class="chain" role="img" aria-label="Worst case: looks complex, via the PCE (a thesis), implies efficiently universal, which via the theorem (proved) implies some runs cannot be foreseen">
+<div class="node">looks complex<br><span class="small">not obviously simple</span></div>
+<div class="arrow thesis"><span>PCE</span><b>⟶</b><span>thesis</span></div>
+<div class="node"><a class="term" href="#t-efficient-universal">efficiently universal</a><br><span class="small">our requirement, not Wolfram's</span></div>
+<div class="arrow proved"><span>theorem</span><b>⟶</b><span>proved</span></div>
+<div class="node">some runs unforeseeable<br><span class="small">no uniform shortcut</span></div>
+</div>
+<p class="chainlabel">Density: <em>most</em> behaviour can't be foreseen (what Wolfram says)</p>
+<div class="chain" role="img" aria-label="Density: looks complex, via the PCE read as a density claim (a thesis with no theorem), implies the system is full of computational irreducibility">
+<div class="node">looks complex<br><span class="small">not obviously simple</span></div>
+<div class="arrow thesis"><span>PCE as density</span><b>⟶</b><span>thesis, no theorem</span></div>
+<div class="node">"full of computational irreducibility"<br><span class="small">reducible pockets are the exception</span></div>
+</div>
+<p style="margin-bottom:0">The theorem (section 1): <strong>no general foreseer exists, not even one that just halves the time.</strong> It is an
+existence result, like "irrational numbers exist". Wolfram's "a lot" is about how much of a system's behaviour is unforeseeable, a density
+question that no theorem reaches (<a href="#density">section 2</a>).</p>
+</div>
+
+<h2 id="s1">1. The theorem: no general foreseer</h2>
+<div id="def-foresee" class="def">
+<p style="margin-top:0"><strong>Definition.</strong> Fix a machine model (<a class="term" href="#t-tm">multi-tape Turing machines</a>). A program F <em>foresees</em> the run of
+program P on input x <em>with speedup s</em> if it produces the same output in at most</p>
+<pre>t(P, x) / s  +  c · |⟨P, x⟩|  steps,</pre>
+<p style="margin-bottom:0">where t(P, x) is the length of the run, ⟨P, x⟩ encodes the question, and c is a constant belonging to F: any
+method has to read the question. F foresees a set of runs if one F with one s &gt; 1 works for all of them.</p>
+</div>
+<p>The order of the quantifiers decides everything:</p>
+<ul>
+<li><strong>One run:</strong> always foreseeable, by "print the answer", Wolfram's "write down the answer". But someone had to compute it.</li>
+<li id="def-linear-speedup"><strong>One program, all inputs:</strong> foreseeable up to any constant factor, by a bigger twin program (the linear
+speedup theorem, Hartmanis &amp; Stearns 1965). So "completely foresee what a program will do" must mean an <em>asymptotically</em> faster
+shortcut, and whether one exists is a question about that program. Rule 90 has one; for Rule 30 nobody knows (try it below).</li>
+<li><strong>One <a class="term" href="#def-foresee">foreseer</a> for a whole class of programs:</strong> impossible, as soon as the class is rich. That is the theorem.</li>
+</ul>
+<div class="card" id="def-prize3">
+<p style="margin-top:0"><strong>Try it: a shortcut and a mystery.</strong> Both <a class="term" href="#t-ca">cellular automata</a> start from one black cell. Rule 90 is
+Pascal's triangle mod 2, so by <a class="term" href="#t-lucas">Lucas's theorem</a> any cell at any step is one bit test, even at step 10<sup>18</sup>. Rule 30 has no known
+shortcut: its centre cell at step n takes about n² cell updates to simulate. Whether order n work is unavoidable is Problem 3 of Wolfram's
+2019 <a href="https://writings.stephenwolfram.com/2019/10/announcing-the-rule-30-prizes/">Rule 30 Prizes</a>, still open.</p>
+<div class="tri"><figure><canvas id="c90"></canvas><figcaption>Rule 90, 64 steps</figcaption></figure><figure><canvas id="c30"></canvas><figcaption>Rule 30, 64 steps</figcaption></figure></div>
+<div class="row" style="margin-top:10px"><label>Rule 90, step: <input type="text" id="j90" value="1000000000000000000"></label>
+<label>Rule 30, step: <input type="text" id="j30" value="20000"></label><button id="jGo">Foresee</button></div>
+<p style="font-size:18px;margin-bottom:0" id="jOut"></p>
+</div>
+
+<h3 id="halving">The halving rule</h3>
+<pre id="def-halving"><strong>Halving rule.</strong> One program F and a constant c such that, for every P and x:
+    F(⟨P, x⟩) = P(x)   in at most   t(P, x) / 2  +  c · |⟨P, x⟩|  steps</pre>
+<p>It sounds modest: half the time, plus the time to read the question. But F is itself a program, so the rule applies to F's own runs.</p>
+
+<h3 id="tower">The tower: aim the foreseer at itself</h3>
+<p>Feed F a description of <em>F foreseeing P</em>, then of <em>F foreseeing F foreseeing P</em>, and so on. Each level adds one copy of F's
+code to the input and halves the time:</p>
+<pre>y₀ = ⟨P, x⟩,   yₖ₊₁ = ⟨F, yₖ⟩,   |yₖ| ≤ |y₀| + k·(|F| + d)
+aₖ = time(F on yₖ)  ≤  aₖ₋₁ / 2  +  c·|yₖ|
+after k = ⌈log₂ T⌉ levels:   aₖ  ≲  1 + 2c · ( |y₀| + (|F| + d) · log₂ T )</pre>
+<p class="small">⟨F, y⟩ must be a self-delimiting code for F followed by y verbatim, so each level adds only a constant d.</p>
+<div class="card">
+<div class="row"><label>direct run T = 2^<input type="number" id="tN" value="60" min="10" max="300" style="width:80px"></label>
+<label>read cost c: <input type="number" id="tC" value="1" min="0.1" step="0.1" style="width:80px"></label>
+<label>|⟨P, x⟩|: <input type="number" id="tY" value="1000" min="1" style="width:110px"></label>
+<label>|F|: <input type="number" id="tF" value="10000" min="1" style="width:110px"></label></div>
+<div class="chart" id="tChart"></div>
+<p style="font-size:18px;margin-bottom:0" id="tOut"></p>
+</div>
+<p id="def-hierarchy"><strong>Why F can't exist.</strong> Every T-step computation would collapse to its reading time plus a log T term. But
+the <em>time hierarchy theorem</em> (Hartmanis &amp; Stearns 1965; Hennie &amp; Stearns 1966) builds, by <a class="term" href="#t-diag">diagonalization</a>, a problem that some
+program solves in n³ steps and no program solves in n². Stack ⌈3 log₂ n⌉ levels on that program and the tower solves it in about
+2c·(n + 3|F|·log₂ n) steps, a contradiction. The same argument rules out any fixed speedup s &gt; 1. It works because the saving is a <em>fraction</em>,
+which compounds, and the foreseer is <em>one</em> program, which can be aimed at itself. So, to the tower question: evaluation length would
+collapse to reading time, and that collapse is why the premise is false.</p>
+<div class="def" id="scope">
+<p style="margin-top:0"><strong>What exactly is claimed.</strong> The tower works for any class C of programs that <strong>contains the
+foreseer's own runs</strong> on members of C and is <strong>rich</strong>: it contains problems that provably need much more time than
+reading their input.</p>
+<p><strong>Ruled out</strong>, for any fixed speedup: one foreseer for all programs; for all programs within a time bound such as n² steps;
+a <a class="term" href="#t-universal">universal</a> program halving its own runs; one foreseer for every starting condition of an <a class="term" href="#t-efficient-universal">efficiently universal</a> system like Rule 110.</p>
+<p style="margin-bottom:0"><strong>Not ruled out:</strong> foreseers for classes too weak to contain the foreseer (Rule 90, finite automata,
+loops with closed forms); a shortcut for one fixed computation, such as Rule 30's centre column; foreseers that are fast on <em>most</em>
+programs rather than all. In short: no foreseer for a class rich enough to contain the foreseer itself, and no claim about weaker classes,
+single systems, or how common unforeseeable runs are.</p>
+</div>
+
+<h2 id="density">2. How much is "a lot"?</h2>
+<p>Wolfram's words are a density claim: the system "will tend to be full of <a class="term" href="#t-irreducible">computational irreducibility</a>", with pockets of reducibility in
+between. He presents this step as intuition from the <a class="term" href="#def-pce">Principle of Computational Equivalence</a> (section 4). The theorem is an existence claim.
+The gap is the one between the rationals and the reals, and it starts with "a lot" having several inequivalent meanings:</p>
+<table>
+<tr><th>"a lot" measured by</th><th>the rationals inside the reals</th></tr>
+<tr><td>presence: in every interval?</td><td>yes, the rationals are dense: every interval contains one</td></tr>
+<tr><td><a class="term" href="#t-measure">measure</a>: chance that a random point lands in the set</td><td>zero: a random real is irrational with probability 1</td></tr>
+<tr><td>count</td><td>countably many, against uncountably many reals</td></tr>
+</table>
+<p>These can disagree in every direction: the Liouville numbers are "almost all" reals in the topological sense (a <a class="term" href="#t-comeager">comeager</a> set), yet they
+have measure zero. In these terms:</p>
+<ul>
+<li><strong>The theorem is a "not every real is rational" statement.</strong> Unforeseeable runs exist in every rich class; it says nothing
+about their measure.</li>
+<li><strong><a class="term" href="#t-universal">Universality</a> gives variety, not density.</strong> A universal system contains every computation <em>somewhere</em>, possibly
+only on a measure-zero set of carefully built starting conditions, as in Rule 110's universality proof. "Once there's anything" behaves the
+same way: computing one hard function means computing everything reducible to it. Breadth, not bulk.</li>
+<li><strong>Wolfram's picture is "the irrationals have full measure".</strong> Irreducibility is the bulk; pockets of reducibility are like
+the rationals, present everywhere but small. The PCE's "almost all processes" is a density claim across systems; "full of irreducibility"
+is one within a system.</li>
+</ul>
+<p><strong>Programs are countable, so "almost all" needs a chosen measure, and the answer depends on the choice:</strong></p>
+<ul>
+<li><strong>Worst-case hardness can be generically easy.</strong> The <a class="term" href="#t-halting">halting problem</a> is decidable on a set of programs of <a class="term" href="#t-density">asymptotic
+probability one</a> (Hamkins &amp; Miasnikov 2006): their machines have a one-way tape, and almost all of them soon run off its end and stop. The
+authors stress that this depends on the model. Many undecidable problems about groups are likewise easy on almost all inputs (Kapovich,
+Myasnikov, Schupp &amp; Shpilrain 2003).</li>
+<li><strong>Where a canonical measure exists, hardness is typical but universality is rare.</strong> Problems, as infinite sequences of
+yes/no answers, form an uncountable space, the "reals" of this story, and Lutz's <a class="term" href="#t-rbm">resource-bounded measure</a> makes "almost every problem in
+exponential time (E)" precise. P has measure zero in E (Lutz 1992), and almost every problem in E resists polynomial-time shortcuts on every
+infinite, efficiently recognizable family of its inputs (Mayordomo 1994). But the problems hard for E, the complexity-theory analogue of
+universality, form a measure-zero set (Juedes &amp; Lutz 1995). The typical hard problem is <em>intermediate</em>, the opposite of the PCE's
+"no natural intermediates".</li>
+<li><strong>The PCE's best reply.</strong> Those typical problems are random noise. Nature runs short rules, and short rules are like the
+computable reals: countably many, measure zero, yet the only ones anyone can name. What is typical <em>among simple rules</em> has no
+canonical measure and no theorems, only Wolfram's enumerations.</li>
+</ul>
+<p><strong>Our experiments</strong> (<a href="#s5">section 5</a>) point the same way: in Wolfram's own bug experiment, late surprises
+exist but quickly become rare, and pockets of exact coarse-grained foresight turn up in most elementary rules, though not in Rule 30.</p>
+<p>So the density claim, the one Wolfram actually makes, is not reached by the theorem and not implied by universality, and where measure
+theory can speak, it speaks both ways. It stands or falls with the PCE as a <a class="term" href="#def-thesis">thesis</a> about simple rules.</p>
+
+<h2 id="s3">3. The ladder: what is proved, conjectured, or a thesis</h2>
+<table id="ladder">
+<tr><th>Claim about irreducibility</th><th>Status</th><th>Basis</th></tr>
+<tr><td>no general <a class="term" href="#def-foresee">foreseer</a>, not even a halving one</td><td class="p">proved</td><td><a class="term" href="#tower">the tower</a> plus the <a class="term" href="#def-hierarchy">time hierarchy theorem</a> (section 1)</td></tr>
+<tr><td>some problems need time g(n), natural ones included</td><td class="p">proved</td><td>the time hierarchy theorem, by <a class="term" href="#t-diag">diagonalization</a>; completeness carries the bounds to natural problems: n×n chess needs exponential time (Fraenkel &amp; Lichtenstein 1981), Presburger arithmetic doubly exponential (Fischer &amp; Rabin 1974)</td></tr>
+<tr><td><a class="term" href="#t-efficient-universal">efficiently universal</a> systems have no exponential shortcut, in the worst case</td><td class="p">proved</td><td>Rule 110 is <a class="term" href="#t-universal">universal</a> (Cook 2004) with polynomial slowdown (Neary &amp; Woods 2006), and predicting it is <a class="term" href="#t-pcomplete">P-complete</a>, so it has no fast parallel shortcut unless P = <a class="term" href="#t-nc">NC</a></td></tr>
+<tr><td>worst-case hard problems can be easy on almost all inputs</td><td class="p">proved</td><td>the <a class="term" href="#t-halting">halting problem</a> is generically decidable in one standard model (Hamkins &amp; Miasnikov 2006)</td></tr>
+<tr><td>in exponential time, hard problems are typical but universal ones are rare</td><td class="p">proved</td><td>Lutz 1992; Mayordomo 1994; Juedes &amp; Lutz 1995 (section 2)</td></tr>
+<tr><td>Rule 30's n-th centre cell needs at least order n work</td><td class="o">conjecture (open)</td><td><a class="term" href="#def-prize3">Rule 30 Prize problem 3</a>. Explicit lower bounds for natural computations currently come only from completeness plus diagonalization, and Rule 30's universality is itself open.</td></tr>
+<tr><td>almost every complex-looking system is universal, and most of its behaviour is <a class="term" href="#t-irreducible">irreducible</a></td><td class="h"><a class="term" href="#def-thesis">thesis</a></td><td>the <a class="term" href="#def-pce">PCE</a> (section 4)</td></tr>
+</table>
+<p>The first three rungs are worst-case theorems; the next two are density theorems, and they point in different directions. The Rule 30
+rung is a precise open conjecture. The last is a thesis that only evidence can support.</p>
+
+<h2 id="s4">4. Is the Principle of Computational Equivalence proved, or a thesis?</h2>
+<p id="def-pce">The Principle of Computational Equivalence (PCE), from
+<a href="https://www.wolframscience.com/nks/chap-12--the-principle-of-computational-equivalence/">A New Kind of Science</a>, ch. 12: almost
+all processes that are not obviously simple "can be viewed as computations of equivalent sophistication" (pp. 716–717). As stated it can't
+be proved: "almost all" has no <a class="term" href="#t-measure">measure</a> and "obviously simple" no definition. Wolfram presents it as partly a law of nature, partly an
+abstract fact and partly a definition (p. 719). Its premise is "not obviously simple", not "unforeseeable"; reading his bug sentence as
+"unforeseeable ⇒ <a class="term" href="#t-universal">universal</a>" is our gloss.</p>
+<p>Mathematics says it is <strong>false in principle and true in practice</strong>:</p>
+<ul>
+<li><strong>False in principle.</strong> There are undecidable problems strictly weaker than the <a class="term" href="#t-halting">halting problem</a> (Friedberg 1957; Muchnik
+1956) and, if <a class="term" href="#t-exp">P ≠ NP</a>, problems strictly between easy and <a class="term" href="#t-npcomplete">NP-complete</a> (Ladner 1975). Wolfram's reply (NKS p. 1130): these constructions only
+look at outputs, and have universal components inside.</li>
+<li><strong>True in practice.</strong> Natural undecidable problems turn out exactly as hard as the halting problem (Montalbán 2019), and
+natural NP problems are almost always either easy or NP-complete; for constraint satisfaction problems that dichotomy is a theorem (Bulatov
+2017; Zhuk 2020). Factoring and graph isomorphism remain candidates for in-between, not proven ones.</li>
+</ul>
+<p>The evidence for it: universality appears at strikingly low thresholds, in Rule 110, the Game of Life, tag systems, tiny
+Turing machines and Diophantine equations. Note that the PCE promises equivalent power, not the <em>efficient</em> universality that the
+theorem needs.</p>
+<p id="def-thesis"><strong>Verdict: a thesis, and a well-supported one</strong>, in the sense of the <a class="term" href="#t-churchturing">Church–Turing thesis</a>: it ties an
+informal notion to a formal one, so evidence can support it but no proof can settle it. It is false as a precise theorem, plausible as a
+regularity of the systems nature produces, and, as section 2 shows, unproven in exactly the density form that Wolfram's sentence needs.</p>
+
+<h2 id="s5">5. Two experiments: bugs and pockets</h2>
+<p><strong>Wolfram's bugs, rerun.</strong> His essay enumerates tiny Turing machines (s states, two colours, input n in binary under
+the head, output read when the head moves right of its start) and asks which ones add 1. We tested all (4s)<sup>2s</sup> of them, 4.3
+billion for 4 states, on n = 1…255, and match his counts: 8,934 three-state and 9,335,700 four-state machines are right on every input
+tried, and 222 four-state machines are right up to 62 but wrong at 63 (one answers 72, as in his essay). Late bugs sit at inputs like 7, 15,
+31, 63, where the carry travels furthest.</p>
+<div class="card">
+<div id="bugTable"></div>
+<div class="row" style="margin-top:12px"><label>machine: <select id="bugPick"></select></label>
+<label>n = <input type="number" id="bugN" value="7" min="1" max="4095" style="width:100px"></label></div>
+<p class="small" style="margin:8px 0 4px">This machine on n = 1…80 (green right, red wrong; click to inspect):</p>
+<div id="bugStrip"></div>
+<div style="overflow-x:auto;margin-top:10px"><canvas id="bugCanvas"></canvas></div>
+<p style="font-size:18px;margin-bottom:0" id="bugOut"></p>
+</div>
+<p id="bug-density"><strong>But surprises are rare.</strong> Of the four-state machines that pass every test up to some depth, the share
+that still fails by 255:</p>
+<table>
+<tr><th>passed every test up to n =</th><th>machines</th><th>fail later</th><th>share</th></tr>
+<tr><td class="num">3</td><td class="num">11,346,372</td><td class="num">2,010,672</td><td class="num">17.7%</td></tr>
+<tr><td class="num">7</td><td class="num">9,416,136</td><td class="num">80,436</td><td class="num">0.85%</td></tr>
+<tr><td class="num">15</td><td class="num">9,336,828</td><td class="num">1,128</td><td class="num">0.012%</td></tr>
+<tr><td class="num">31</td><td class="num">9,335,922</td><td class="num">222</td><td class="num">0.0024%</td></tr>
+<tr><td class="num">63</td><td class="num">9,335,700</td><td class="num">0</td><td class="num">0</td></tr>
+</table>
+<p>Each doubling of the test depth cuts late failures by a factor of 5 to 70. Testing can miss, which is Wolfram's point, but rarely, which
+is not "a lot". The caveats: tiny machines, a simple task, inputs only up to 255.</p>
+<p class="small">Code: a 100-line C program that branches on a rule-table entry only when a run first needs it, about 20 minutes for the 4.3
+billion machines. "Never stops" means no halt within 20,000 steps.</p>
+<p><strong>Pockets of reducibility.</strong> Group a <a class="term" href="#t-ca">cellular automaton</a>'s cells into blocks, summarize each block by one bit, and look for a
+rule that predicts the summaries <em>exactly</em> (Israeli &amp; Goldenfeld 2004). Searching all 256 elementary rules with blocks of up to 4
+cells, 202 rules have such a <a class="term" href="#def-coarse">coarse-graining</a>, 108 of them onto a different, non-constant rule.</p>
+<div id="def-coarse" class="card">
+<div class="row"><label>pair: <select id="cgPick"></select></label><button id="cgNew">New random start</button></div>
+<div class="tri" style="margin-top:10px"><figure><canvas id="cgFine" style="width:330px"></canvas><figcaption>fine rule, every cell</figcaption></figure>
+<figure><canvas id="cgCoarse" style="width:330px"></canvas><figcaption>coarse rule's prediction (red = wrong)</figcaption></figure></div>
+<p style="font-size:18px;margin-bottom:0" id="cgOut"></p>
+</div>
+<p>Rule 146 looks chaotic, yet its all-black blocks of 3 follow trivial Rule 128. <a class="term" href="#t-universal">Universal</a> Rule 110 has only the weakest kind: with blocks
+of 5, the block 01010 never appears after five steps. Rule 30 has none, not even the weak kind at any block size, because it is <a class="term" href="#t-surjective">surjective</a>:
+no block is ever ruled out. Pockets are everywhere, like the rationals, but Rule 30 offers none we could find.</p>
+<p>Two more kinds of foresight survive: <strong>properties</strong>, which a proof can predict for every output without computing
+one (formal verification lives in these pockets), and <strong>statistics</strong>, such as Rule 30's centre column looking half black, though
+even that is unproved (Rule 30 Prize problem 2).</p>
+
+<h2 id="s6">6. Bottom line</h2>
+<p>Wolfram's first sentence is close to a tautology: a program with a shortcut isn't worth running. Its precise companion is a theorem: no
+general <a class="term" href="#def-foresee">foreseer</a> exists, not even one that just halves the time, so programs worth running always exist. That is an existence result. His
+second sentence is a density claim, that a complex-looking system is full of <a class="term" href="#t-irreducible">irreducibility</a>. No theorem reaches it, <a class="term" href="#t-measure">measure</a> theory cuts both
+ways, and our bug data shows surprises that exist but are rare. It rests on the <a class="term" href="#def-pce">PCE</a>: a well-supported <a class="term" href="#def-thesis">thesis</a> about simple rules, not a
+theorem.</p>
+
+<h2 id="terms">Terms</h2>
+<dl class="terms">
+<dt id="t-tm">Turing machine</dt><dd>The standard model of a computer: a finite rule table reading and writing symbols on an unbounded tape, one cell per step. The <em>multi-tape</em> version is the usual model for counting steps.</dd>
+<dt id="t-ca">cellular automaton</dt><dd>A row of black and white cells updated in parallel by one rule. In an <em>elementary</em> one, a cell's next colour depends on itself and its two neighbours: 256 possible rules (Rule 30, Rule 90, Rule 110, …).</dd>
+<dt id="t-universal">universal</dt><dd>Able to emulate any Turing machine, given a suitable encoding of the machine and its input in the starting condition.</dd>
+<dt id="t-efficient-universal">efficiently universal</dt><dd>Universal with only polynomial overhead in encoding size and running time. The theorem needs this; exponential overhead is not enough.</dd>
+<dt id="t-irreducible">computationally irreducible</dt><dd>Wolfram's term: no way to predict a system essentially faster than running it (NKS p. 739). A property of one system; the theorem is about a different notion, no uniform speedup across a class.</dd>
+<dt id="t-exp">P, NP, E</dt><dd>P: problems solvable in polynomial time. NP: problems whose solutions can be <em>checked</em> in polynomial time. E: problems solvable in time 2<sup>O(n)</sup>. P ≠ NP is the famous open problem.</dd>
+<dt id="t-npcomplete">NP-complete</dt><dd>The hardest problems in NP: a fast algorithm for one would give fast algorithms for all of NP.</dd>
+<dt id="t-pcomplete">P-complete</dt><dd>The hardest problems in P under very cheap reductions: if one had a fast parallel algorithm (in NC), all of P would.</dd>
+<dt id="t-nc">NC</dt><dd>Problems solvable in polylogarithmic time with polynomially many parallel processors. Whether P = NC is open.</dd>
+<dt id="t-diag">diagonalization</dt><dd>Building an object that differs from every item on a list, such as a problem that every fast program gets wrong somewhere.</dd>
+<dt id="t-halting">halting problem</dt><dd>Deciding whether a given program stops on a given input. Turing proved no program can do it in general.</dd>
+<dt id="t-lucas">Lucas's theorem</dt><dd>C(t, k) is odd exactly when every 1 bit of k is a 1 bit of t; it turns Rule 90 into a bit test.</dd>
+<dt id="t-surjective">surjective</dt><dd>A cellular automaton is surjective if every row has a predecessor; equivalently, no finite block is ever ruled out.</dd>
+<dt id="t-measure">measure zero, almost all</dt><dd>A set has measure zero if a random point lands in it with probability 0, like the rationals in the reals; its complement holds almost all points. On a countable collection such as all programs there is no canonical "random", so such claims depend on the distribution chosen.</dd>
+<dt id="t-comeager">comeager</dt><dd>"Almost all" topologically: containing a countable intersection of dense open sets. It can disagree with measure: the Liouville numbers are comeager yet have measure zero.</dd>
+<dt id="t-density">asymptotic probability</dt><dd>The fraction of inputs of size n with a property, in the limit of large n. A problem is <em>generically easy</em> if it is solvable on a set of asymptotic probability one.</dd>
+<dt id="t-rbm">resource-bounded measure</dt><dd>Lutz's version of "almost every problem in E": a set has measure zero in E if some betting strategy computable within E wins unboundedly against every member.</dd>
+<dt id="t-churchturing">Church–Turing thesis</dt><dd>Everything effectively computable is computable by a Turing machine: an informal notion tied to a formal one, supported by evidence, not provable.</dd>
+</dl>
+<p class="small">Defined in the text: <a href="#def-foresee">foresee</a> · <a href="#def-linear-speedup">linear speedup theorem</a> · <a href="#def-halving">halving rule</a> · <a href="#tower">tower</a> · <a href="#def-hierarchy">time hierarchy theorem</a> · <a href="#def-prize3">Rule 30 Prize problem 3</a> · <a href="#def-pce">Principle of Computational Equivalence</a> · <a href="#def-thesis">thesis</a> · <a href="#def-coarse">coarse-graining</a> · <a href="#density">existence vs density</a>.</p>
+
+<h2>Sources</h2>
+<ul style="font-size:18px">
+<li>Wolfram (2026). <a href="https://writings.stephenwolfram.com/2026/07/towards-a-theory-of-bugs-the-ruliology-of-the-unexpected/">Towards a theory of bugs: the ruliology of the unexpected</a>. Stephen Wolfram Writings, 21 July 2026.</li>
+<li>Wolfram (2002). <a href="https://www.wolframscience.com/nks/">A New Kind of Science</a>. PCE pp. 716–719; irreducibility p. 739; intermediate degrees p. 1130. Wolfram (2019). <a href="https://writings.stephenwolfram.com/2019/10/announcing-the-rule-30-prizes/">Announcing the Rule 30 Prizes</a>.</li>
+<li>Hartmanis &amp; Stearns (1965). <a href="https://doi.org/10.1090/S0002-9947-1965-0170805-7">On the computational complexity of algorithms</a>. Trans. AMS 117:285–306. Hennie &amp; Stearns (1966). <a href="https://doi.org/10.1145/321356.321362">Two-tape simulation of multitape Turing machines</a>. JACM 13(4):533–546.</li>
+<li>Fraenkel &amp; Lichtenstein (1981). <a href="https://doi.org/10.1016/0097-3165(81)90016-9">Computing a perfect strategy for n×n chess requires time exponential in n</a>. JCTA 31(2). Fischer &amp; Rabin (1974). Super-exponential complexity of Presburger arithmetic. SIAM-AMS Proc. 7:27–41.</li>
+<li>Cook (2004). <a href="https://www.complex-systems.com/abstracts/v15_i01_a01/">Universality in elementary cellular automata</a>. Complex Systems 15(1):1–40. Neary &amp; Woods (2006). <a href="https://doi.org/10.1007/11786986_13">P-completeness of cellular automaton Rule 110</a>. ICALP 2006, LNCS 4051.</li>
+<li>Hamkins &amp; Miasnikov (2006). <a href="https://doi.org/10.1305/ndjfl/1168352664">The halting problem is decidable on a set of asymptotic probability one</a>. Notre Dame J. Formal Logic 47(4).</li>
+<li>Kapovich, Myasnikov, Schupp &amp; Shpilrain (2003). <a href="https://doi.org/10.1016/S0021-8693(03)00167-4">Generic-case complexity, decision problems in group theory, and random walks</a>. J. Algebra 264(2):665–694.</li>
+<li>Lutz (1992). <a href="https://doi.org/10.1016/0022-0000(92)90020-J">Almost everywhere high nonuniform complexity</a>. JCSS 44(2):220–258.</li>
+<li>Mayordomo (1994). <a href="https://doi.org/10.1016/0304-3975(94)00023-C">Almost every set in exponential time is P-bi-immune</a>. Theoret. Comput. Sci. 136(2):487–506.</li>
+<li>Juedes &amp; Lutz (1995). <a href="https://doi.org/10.1137/S0097539792238133">The complexity and distribution of hard problems</a>. SIAM J. Comput. 24(2):279–295.</li>
+<li>Friedberg (1957). <a href="https://doi.org/10.1073/pnas.43.2.236">Two recursively enumerable sets of incomparable degrees of unsolvability</a>. PNAS 43(2):236–238. Muchnik (1956), Doklady AN SSSR 108.</li>
+<li>Ladner (1975). <a href="https://doi.org/10.1145/321864.321877">On the structure of polynomial time reducibility</a>. JACM 22(1):155–171.</li>
+<li>Montalbán (2019). <a href="https://doi.org/10.1090/noti1940">Martin's conjecture: a classification of the naturally occurring Turing degrees</a>. Notices AMS 66(8).</li>
+<li>Bulatov (2017). <a href="https://doi.org/10.1109/FOCS.2017.37">A dichotomy theorem for nonuniform CSPs</a>. FOCS 2017. Zhuk (2020). <a href="https://doi.org/10.1145/3402029">A proof of the CSP dichotomy conjecture</a>. JACM 67(5).</li>
+<li>Israeli &amp; Goldenfeld (2004). <a href="https://doi.org/10.1103/PhysRevLett.92.074105">Computational irreducibility and the predictability of complex physical systems</a>. PRL 92:074105.</li>
+</ul>
+<script src="foresee-widgets.js"></script>
+<script src="tmdata.js"></script>
+<script src="bugs-widget.js"></script>
+<script src="coarse-widget.js"></script>
+</body>
+</html>
