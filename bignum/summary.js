@@ -266,7 +266,7 @@ function defaults(t) {
   if (a && b) return [selFromRun(a), selFromRun(b)];
   return rs.slice(0, 2).map(r => selFromRun(r));
 }
-// default view (Flash, no thinking): #1 add + words on the 169 cases of the @simonw setup; #2 = #1 on the full grid;
+// default view (Flash, no thinking): #1 add + words on the 169 cases paired with the thinking arms; #2 = #1 on the full grid;
 // #3 / #4 = #2 on mul + words / factoring (full grid; until a task has one, the 169-case run shows and the override waits)
 function defaultPanels() {
   const flash = RUNS.filter(r => r.task === 'words' && /flash/i.test(r.model));
@@ -730,7 +730,7 @@ const frIsOn = se => frDefaultOn(se) !== frOff.includes(se.id);
 // SOTA conditions, least to most constrained: anything goes, web no crates, no web no crates
 const COND_ORDER = ['L', 'R', 'M'];
 // readable names for the two no-thinking runs on add + words
-const ARM_TEXT = { nothink: '169 cases (@simonw setup)', 'nothink-grid': 'full grid (5,070 cases)' };
+const ARM_TEXT = { nothink: '169 cases (paired with thinking)', 'nothink-grid': 'full grid (5,070 cases, @simonw’s headline)' };
 function frontierSeries() {
   const out = [];
   const condRank = r => rank(COND_ORDER, r.solution ? r.solution.cond : '');
