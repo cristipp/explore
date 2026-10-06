@@ -720,7 +720,7 @@ const frIsOn = se => frDefaultOn(se) !== frOff.includes(se.id);
 // SOTA conditions, least to most constrained: anything goes, web no crates, no web no crates
 const COND_ORDER = ['L', 'R', 'M'];
 // readable names for the two no-thinking runs on add + words
-const ARM_TEXT = { nothink: '169 cases (paired)', 'nothink-grid': 'full grid (5,070 cases)' };
+const ARM_TEXT = { nothink: '169 cases (@simonw setup)', 'nothink-grid': 'full grid (5,070 cases)' };
 function frontierSeries() {
   const out = [];
   const condRank = r => rank(COND_ORDER, r.solution ? r.solution.cond : '');
