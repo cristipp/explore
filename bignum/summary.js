@@ -17,7 +17,7 @@ const ORDER = {
 };
 const PALETTE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9', '#D55E00', '#8C6BB1', '#999933',
   '#882255', '#44AA99'];
-// shape = condition on the SOTA page (M memory only, R references, L anything); no thinking / thinking in-head
+// shape = condition on the SOTA page (M memory only, R references, L anything goes); no thinking / thinking in-head
 const SHAPES = { nothink: 'circle', think: 'square', sota_rust_M: 'circle', sota_rust_R: 'square', sota_rust_L: 'triangle' };
 const shapeOf = mode => SHAPES[mode] || (/^sota/.test(mode) ? 'triangle' : 'diamond');
 function rank(list, v) { const i = list.indexOf(v); return i < 0 ? list.length : i; }
@@ -1202,7 +1202,7 @@ function renderLive(flash, err) {
     flashT = setTimeout(() => el.classList.remove('flash'), 1800);
   }
 }
-const COND = { M: 'M · memory only', R: 'R · references', L: 'L · anything' };
+const COND = { M: 'M · memory only', R: 'R · references', L: 'L · anything goes' };
 function renderSota() {
   const rs = RUNS.filter(r => r.solution).sort((a, b) => rank(['M', 'R', 'L'], a.solution.cond) - rank(['M', 'R', 'L'], b.solution.cond) ||
     String(a.model).localeCompare(b.model));
