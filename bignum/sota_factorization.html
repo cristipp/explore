@@ -40,8 +40,9 @@ rules, so the run counts as is.</p>
 <h2 id="frontier">Factoring frontier: runtime control</h2>
 <p class="note" id="frnote">Each SOTA program, graded after its hour on an idle machine: p and q both have d digits,
 with 16 fresh pairs per size and T = 60 s per number. Two views of the same runs; the run selector below applies to
-both. Color = model; shape (and line style) = condition: ● M memory only, ■ R references, ▲ L anything. By default only fully factored sizes (16/16) are drawn. Tick “partial factorization success” to add the sizes where fewer than 16 pairs were factored (hollow markers), and ◇ at the fine frontier: the exact largest d with 16/16 (galloping + binary search).</p>
-<div class="chips" id="frmwrap"><label class="chip"><input type="checkbox" id="frfine"> partial factorization success</label></div>
+both. Color = model; shape (and line style) = condition: ● M memory only, ■ R references, ▲ L anything. R is hidden by default: no run used the web, so it did nothing beyond memory only; tick “references (R)” to show it. By default only fully factored sizes (16/16) are drawn. Tick “partial factorization success” to add the sizes where fewer than 16 pairs were factored (hollow markers), and ◇ at the fine frontier: the exact largest d with 16/16 (galloping + binary search).</p>
+<div class="chips" id="frmwrap"><label class="chip"><input type="checkbox" id="frrefs"> references (R)</label>
+  <label class="chip"><input type="checkbox" id="frfine"> partial factorization success</label></div>
 <div class="chips" id="frlegend" role="group" aria-label="Runs shown in the three frontier charts"></div>
 <div id="frcharts">
 <h3>Answer time per pair</h3>
