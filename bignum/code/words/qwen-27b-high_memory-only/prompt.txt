@@ -1,0 +1,9 @@
+Write the best program you can for this task. Do your absolute best: you have 60 minutes, starting now. Before the hour ends, review that you have the absolute best algorithm you can think of.
+
+Task: Given two positive integers a and b (each up to 13 digits), compute a + b and write the sum in English words, e.g. 1234567 -> "one million two hundred thirty-four thousand five hundred sixty-seven". Use lowercase, hyphenate tens (twenty-one), no "and", no commas; scale words thousand, million, billion, trillion.
+
+Resources: none. No web access and no packages: work from memory. The program must use the Python standard library only. You cannot run code yourself: reply with the complete program as one ```python code block. After each reply we run it on the benchmark and send you the results (this time counts against the hour). When you are done, put the word FINAL on its own line in a reply; the program from that reply is graded.
+
+Interface: `python3 program.py --time-limit T` reads JSON lines {"id": ..., "a": <int>, "b": <int>} on stdin and prints one JSON line {"id": ..., "answer": ...} per input, flushing after each; answer is the sum in words (a string). It must exit within T seconds; on timeout, print {"id": ..., "answer": null, "timeout": true} for anything unanswered and exit with status 0.
+
+Grading, after the hour: the program runs once on 169 benchmark cases (a and b each have 1 to 13 digits, one case per pair of lengths) and once on 169 hidden cases of the same shape, each with --time-limit 30. The score is the number of correct answers, with total run time as the tie-break.

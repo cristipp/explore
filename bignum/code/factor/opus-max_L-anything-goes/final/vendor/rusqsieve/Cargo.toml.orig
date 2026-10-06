@@ -1,0 +1,95 @@
+[package]
+name = "rusqsieve"
+version = "0.5.0"
+edition = "2024"
+description = "High-performance SIQS integer factorization for native Rust and WebAssembly"
+license = "Apache-2.0 OR MPL-2.0"
+authors = ["metastable-void"]
+repository = "https://github.com/metastable-void/rusqsieve"
+homepage = "https://github.com/metastable-void/rusqsieve"
+documentation = "https://docs.rs/rusqsieve"
+readme = "README.md"
+keywords = ["factorization", "quadratic-sieve", "number-theory", "wasm", "rsa"]
+categories = ["algorithms", "mathematics", "command-line-utilities", "wasm"]
+include = [
+    "/src/**",
+    "/tests/**",
+    "/web/**",
+    "/tools/**",
+    "/release/**",
+    "/Cargo.lock",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/BENCHMARKING.md",
+    "/SPEC.md",
+    "/LICENSE-APACHE",
+    "/LICENSE-MPL",
+    "/Makefile",
+    "/build-release.sh",
+    "/rusqsieve.h",
+    "/rusqsieve.pc.in",
+]
+
+# Feature and target gates are load-bearing on this crate's public API — `random_prime` exists only
+# on native builds with `rand` — so docs.rs is told to build the gated surface and to annotate it.
+[package.metadata.docs.rs]
+features = ["cli", "rand"]
+targets = ["x86_64-unknown-linux-gnu"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lib]
+crate-type = ["rlib", "cdylib", "staticlib"]
+
+[features]
+default = ["cli", "rand"]
+cli = []
+# Operating-system entropy for `Natural::random_prime`. The dependency is declared per target below,
+# so a wasm32 build does not acquire it even with the feature on.
+rand = ["dep:rand"]
+wasm-simd128 = []
+fuzzing = []
+
+# `rand` is scoped to exactly the targets `random_prime` compiles for. `wasm32-unknown-unknown` is
+# neither unix nor windows, so the wasm artifacts — where every kilobyte is a shipping gate — never
+# see this tree even when a dependent enables the feature for its native build.
+[target.'cfg(any(unix, windows))'.dependencies]
+rand = { version = "0.10.2", default-features = false, features = [
+    "thread_rng",
+], optional = true }
+
+
+[[bin]]
+name = "qs-factor"
+path = "src/bin/qs-factor.rs"
+required-features = ["cli"]
+
+[[test]]
+name = "cli"
+required-features = ["cli"]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "unwind"
+strip = true
+
+[profile.bench]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+
+# Optimized test builds. `cargo test --release` cannot link this crate from a cold cache:
+# `crate-type = ["rlib", "cdylib", "staticlib"]` collides on `librusqsieve.rlib` (cargo#6313) and
+# combines badly with `panic = "abort"` and fat LTO, so the test harness fails to resolve symbols.
+# `panic = "unwind"` is also required for the harness to report a failing assertion rather than
+# aborting the process. Use `cargo test --profile release-test` for the slow corpus tiers.
+[profile.release-test]
+inherits = "release"
+panic = "unwind"
+lto = "thin"
+codegen-units = 16
+strip = false
+
+[dev-dependencies]
+num-bigint = { version = "0.5.1" }
