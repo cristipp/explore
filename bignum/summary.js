@@ -219,7 +219,6 @@ let uid = 0;
 let ovY = 'acc';     // overview y axis: 'acc' | 'frontier' (frontier only offered when the task has it)
 let frMetric = 'time'; // frontier chart y: 'evals' | 'time' | 'coding'
 let frAnchorTest = false; // timeline: anchor reach steps to the first test instead of the code edit
-let frRefs = false; // show the R (web references) runs: off by default, since no run used the web
 let frFine = false; // show partial factorization success + fine-frontier markers (off by default)
 let frOff = []; // frontier series ids toggled off (new runs show by default)
 let ovModes = null; // null = all modes; else array of modes to plot (may include modes the task lacks)
@@ -332,7 +331,7 @@ const effTask = () => ovTask || (panels[0] && panels[0].task) || defaultTask();
 function shortOf(model) { const r = RUNS.find(x => x.model === model); return r ? r.model_short : model; }
 function encodeHash() {
   if (PAGE === 'sota') {
-    const h = [frOff.length ? 'fr=' + frOff.map(encodeURIComponent).join(',') : '', frFine ? 'ff=1' : '', frRefs ? 'rr=1' : '', frAnchorTest ? 'at=1' : ''].filter(Boolean).join('&');
+    const h = [frOff.length ? 'fr=' + frOff.map(encodeURIComponent).join(',') : '', frFine ? 'ff=1' : '', frAnchorTest ? 'at=1' : ''].filter(Boolean).join('&');
     return h ? '#' + h : location.pathname + location.search;
   }
   const ps = panels.map(p => {
@@ -363,7 +362,6 @@ function readHash() {
   frMetric = kv.fm === 'evals' || kv.fm === 'pass' ? 'evals' : kv.fm === 'coding' || kv.fm === 'codetime' ? 'coding' : 'time'; // absent -> answer time
   frOff = kv.fr ? kv.fr.split(',').filter(Boolean).map(decodeURIComponent) : [];
   frFine = kv.ff === '1';
-  frRefs = kv.rr === '1';
   frAnchorTest = kv.at === '1';
   if (PAGE === 'sota') return true; // the SOTA page has no panels
   if (kv.p == null && kv.t == null) return false;
@@ -776,12 +774,11 @@ function renderFrontier() {
       '</label>';
   };
   lg.innerHTML = '<span class="lbl">Show</span><button type="button" data-frq="all">all</button>' +
-    series.filter(se => frRefs || !isRefs(se)).map(chip).join('');
+    series.map(chip).join('');
   if (fv != null) { const i = [...lg.querySelectorAll('input')].find(x => x.value === fv); if (i) i.focus({ preventScroll: true }); }
 
-  const shown = series.filter(se => isOn(se) && (frRefs || !isRefs(se)));
+  const shown = series.filter(isOn);
   const ffb = document.getElementById('frfine'); if (ffb) ffb.checked = frFine;
-  const frb = document.getElementById('frrefs'); if (frb) frb.checked = frRefs;
   const fab = document.getElementById('franchor'); if (fab) fab.checked = frAnchorTest;
   // three charts, one per metric; each draws into fr-<metric> with its caption in frtitle-<metric>
   for (const m of FR_METRICS) { frMetric = m; if (frId('fr')) drawFrChart(series, shown); }
@@ -789,7 +786,6 @@ function renderFrontier() {
   renderEpisodes(shown);
 }
 // charts drawn = those whose fr-<metric> container exists on the page
-const isRefs = se => !!(se.run.solution && se.run.solution.cond === 'R');
 const FR_METRICS = ['timeline', 'time', 'evals', 'coding'];
 // with the fine frontier off, only fully factored sizes are drawn (partial sizes belong to the fine search)
 const frKeep = (t, se) => frFine || (t.cap !== 'skipped' && (t.passed || 0) >= (t.k || se.f.k || 1));
@@ -1457,9 +1453,6 @@ frEl.addEventListener('focusout', hideFrTip);
 });
 document.getElementById('franchor')?.addEventListener('change', e => {
   frAnchorTest = e.target.checked; hideFrTip(); renderFrontier(); writeHash();
-});
-document.getElementById('frrefs')?.addEventListener('change', e => {
-  frRefs = e.target.checked; hideFrTip(); renderFrontier(); writeHash();
 });
 document.getElementById('frfine')?.addEventListener('change', e => {
   frFine = e.target.checked; hideFrTip(); renderFrontier(); writeHash();

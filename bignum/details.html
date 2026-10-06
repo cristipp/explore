@@ -52,8 +52,9 @@ no crates; 1,510 lines)</td><td><b>40</b> · 44 min (SIQS, 1,310 lines)</td></tr
 </table>
 <ul>
 <li><strong>Convergence on the state of the art: supported.</strong> All six runs built a quadratic sieve; from
-memory they come within 1 digit of the library-based best (40 vs 41). No run used web search or fetch, so
-"web references" made no difference.</li>
+memory they come within 1 digit of the library-based best (40 vs 41). No run used web search or fetch, yet
+"web references" changed behaviour: both R runs stopped after about 20 minutes (the other four took 38–52) and scored at
+or below their memory-only twins (Sonnet 37 vs 40, Opus 40 = 40).</li>
 <li><strong>Above a competency threshold the model doesn't matter: supported.</strong> Sonnet medium (memory only)
 matches Opus max (40 = 40); the spread over all six runs is 37–41 digits per prime.</li>
 <li><strong>A self-inflicted handicap (Sonnet M):</strong> it wrote <code>num-bigint = "0.4"</code> from memory, but
