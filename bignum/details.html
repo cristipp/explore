@@ -30,8 +30,9 @@ Without thinking: 2–3/91, and 118/2,730 (4.3%) on Flash's full grid, all of th
 <li><strong>Writing a program from training data memories solves add + words and mul + words outright.</strong> Given an hour, no
 internet and no libraries (Python), both Qwen models at high effort write converters that score 169/169 on each task
 and 169/169 on a hidden set of fresh cases.</li>
-<li><strong>Factoring by program reaches 37–41 digits per prime.</strong> Sonnet medium and Opus max, given an hour in
-Rust with the grading rules stated up front, all build a quadratic sieve (see 1b).</li>
+<li><strong>Factoring by program reaches 37–41 digits per prime, above a competency threshold.</strong> Sonnet 5.5
+medium and Opus 5.5 max, given an hour in Rust with the grading rules stated up front, all build a quadratic sieve. Sonnet
+4.6 low reaches 40 only with a library; on its own it reaches 23–26 (see 1b).</li>
 <li><strong>Qwen can barely write Rust.</strong> Asked for the same converter in Rust, Flash ran out of tokens before
 producing code; the 27B's program had one compile error (a missing <code>mut</code>) and, once fixed, a spacing bug
 (8/169).</li>
@@ -43,30 +44,38 @@ xhigh, which produces <em>shorter</em> reasoning than "medium".</li>
 <p>Fine frontier = exact largest digits per prime with 16/16 fresh balanced semiprimes factored within 60 s each
 (graded after the hour, on an idle machine).</p>
 <table>
-<tr><th>Condition</th><th>Sonnet 5.5 medium</th><th>Opus 5.5 max</th></tr>
+<tr><th>Condition</th><th>Sonnet 4.6 low</th><th>Sonnet 5.5 medium</th><th>Opus 5.5 max</th></tr>
 <!-- cells: fine frontier · coding time (solution) -->
-<tr><td>L: anything goes (crates + web)</td><td>39 · 50 min (own SIQS with double large primes; rayon)</td>
+<tr><td>L: anything goes (crates + web)</td><td>40 · 42 min (<code>rusqsieve</code> crate, found by web search)</td><td>39 · 50 min (own SIQS with double large primes; rayon)</td>
 <td><b>41</b> · 53 min (<code>rusqsieve</code> crate, vendored and retuned)</td></tr>
-<tr><td>R: web, no crates (web allowed, never used)</td><td>37 · 19 min (SIQS, 1,091 lines)</td>
+<tr><td>R: web, no crates (web allowed, never used)</td><td>26 · 60 min, ran out (ECM + rho, 783 lines)</td><td>37 · 19 min (SIQS, 1,091 lines)</td>
 <td><b>40</b> · 26 min (SIQS + Block Lanczos, 1,750 lines)</td></tr>
-<tr><td>M: no web, no crates (std + big-int whitelist)</td><td><b>40</b> · 38 min (own SIQS and own big-int arithmetic,
+<tr><td>M: no web, no crates (std + big-int whitelist)</td><td>23 · 60 min, ran out (plain quadratic sieve, 736 lines)</td><td><b>40</b> · 38 min (own SIQS and own big-int arithmetic,
 no crates; 1,510 lines)</td><td><b>40</b> · 44 min (SIQS, 1,310 lines)</td></tr>
 </table>
 <ul>
-<li><strong>Convergence on the state of the art: supported.</strong> All six runs built a quadratic sieve; with
-no web and no crates they come within 1 digit of the library-based best (40 vs 41). No run used web search or fetch, yet
-"web, no crates" changed behaviour: both R runs stopped after about 20 minutes (the other four took 38–52) and scored at
-or below their no-web, no-crates twins (Sonnet 37 vs 40, Opus 40 = 40).</li>
+<li><strong>Convergence on the state of the art: supported above a competency threshold.</strong> All six runs by Sonnet
+5.5 medium and Opus 5.5 max built a quadratic sieve; with no web and no crates they come within 1 digit of the
+library-based best (40 vs 41). Sonnet 4.6 low, the weakest model on the plan, only got there with the library (40, after
+finding <code>rusqsieve</code> by web search, the only run to use the web); on its own it chose ECM with rho (26) or wrote
+a plain quadratic sieve (23), and ran out the hour both times.</li>
 <li><strong>Above a competency threshold the model doesn't matter: mostly. The model matters only by a thin
-margin.</strong> Opus max is at or above Sonnet medium in every condition, by 0 to 3 digits per prime (anything goes 41 vs
-39, web, no crates 40 vs 37, no web, no crates 40 = 40); the spread over all six runs is 37–41.</li>
+margin.</strong> Opus max is at or above Sonnet 5.5 medium in every condition, by 0 to 3 digits per prime (anything goes
+41 vs 39, web, no crates 40 vs 37, no web, no crates 40 = 40). Below the threshold it matters a lot (23–26), unless a
+library closes the gap (40).</li>
+<li><strong>"Web, no crates" changed behaviour without being used.</strong> Both 5.5 runs in it stopped after about 20
+minutes (their other four took 38–52) and scored at or below their no-web, no-crates twins (Sonnet 37 vs 40, Opus 40 =
+40).</li>
+<li><strong>Isolation slip:</strong> the sessions ran in sibling folders. Sonnet 4.6 low (web, no crates) read Opus 5.5's
+build setup (<code>Cargo.toml</code>, <code>Cargo.lock</code>, the crate registry) to get past the offline
+<code>num-bigint</code> version problem; it did not open Opus's source and built a different algorithm.</li>
 <li><strong>A self-inflicted handicap (Sonnet M):</strong> it wrote <code>num-bigint = "0.4"</code> from training data memories, but
 the pre-fetched whitelist was 0.5.1. The offline build failed with cargo naming the available version, and Sonnet then
 dropped all crates and wrote its own big-integer arithmetic instead of switching to 0.5. A dumb error, but within the
 rules, so the run counts as is; it still reached 40.</li>
-<li><strong>The only real difference is the solution chosen and how fast it was written</strong> (19–53 min). Runtime per
-number near the frontier is within about 2× across all six (<a href="sota_factorization.html">sota_factorization</a>, frontier chart).</li>
-<li>Usage: the six 1 h runs cost about +1% of the weekly plan limit.</li>
+<li><strong>Above the threshold, the only real difference is the solution chosen and how fast it was written</strong> (19–53 min). Runtime per
+number near the frontier is within about 2× across the six 5.5 runs (<a href="sota_factorization.html">sota_factorization</a>, frontier chart).</li>
+<li>Usage: the six 5.5 runs cost about +1% of the weekly plan limit; the three Sonnet 4.6 low runs about +2% (39% → 41%).</li>
 </ul>
 
 <h2>2. Ablation by task</h2>
@@ -95,7 +104,7 @@ d digits, d = 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, with 16 
 the largest d where every size up to d is 16/16. The fine frontier is the exact d found by a galloping + binary search
 on fresh pairs, with T = 60 s per number.</p>
 <!-- GEN:frontier -->
-<div class='wide'><table><tr><th>model</th><th>arm</th><th>lang</th><th>frontier (digits/prime)</th><th>factored</th><th>coding time</th><th>fine frontier</th><th>per size (d:passed/16)</th></tr><tr><td>claude-opus-5-5</td><td>sota_rust_L-max</td><td>Rust</td><td><b>41</b></td><td>121/240</td><td>53 min</td><td>41 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 41:16 42:9 43:0 47:0 63:0</small></td></tr><tr><td>claude-opus-5-5</td><td>sota_rust_M-max</td><td>Rust</td><td><b>40</b></td><td>122/240</td><td>44 min</td><td>40 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:16 41:10 43:0 47:0 63:0</small></td></tr><tr><td>claude-opus-5-5</td><td>sota_rust_R-max</td><td>Rust</td><td><b>40</b></td><td>117/240</td><td>26 min</td><td>40 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:16 41:5 43:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-5-5</td><td>sota_rust_M-medium</td><td>Rust</td><td><b>40</b></td><td>112/240</td><td>38 min</td><td>40 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:16 41:0 43:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-5-5</td><td>sota_rust_L-medium</td><td>Rust</td><td><b>39</b></td><td>101/240</td><td>50 min</td><td>39 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:5 41:0 43:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-5-5</td><td>sota_rust_R-medium</td><td>Rust</td><td><b>37</b></td><td>127/240</td><td>19 min</td><td>37 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 35:16 37:16 38:15 39:0 47:0 63:0</small></td></tr></table></div>
+<div class='wide'><table><tr><th>model</th><th>arm</th><th>lang</th><th>frontier (digits/prime)</th><th>factored</th><th>coding time</th><th>fine frontier</th><th>per size (d:passed/16)</th></tr><tr><td>claude-opus-5-5</td><td>sota_rust_L-max</td><td>Rust</td><td><b>41</b></td><td>121/240</td><td>53 min</td><td>41 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 41:16 42:9 43:0 47:0 63:0</small></td></tr><tr><td>claude-opus-5-5</td><td>sota_rust_M-max</td><td>Rust</td><td><b>40</b></td><td>122/240</td><td>44 min</td><td>40 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:16 41:10 43:0 47:0 63:0</small></td></tr><tr><td>claude-opus-5-5</td><td>sota_rust_R-max</td><td>Rust</td><td><b>40</b></td><td>117/240</td><td>26 min</td><td>40 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:16 41:5 43:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-4-6</td><td>sota_rust_L-low</td><td>Rust</td><td><b>40</b></td><td>113/240</td><td>42 min</td><td>40 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:16 41:1 43:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-5-5</td><td>sota_rust_M-medium</td><td>Rust</td><td><b>40</b></td><td>112/240</td><td>38 min</td><td>40 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:16 41:0 43:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-5-5</td><td>sota_rust_L-medium</td><td>Rust</td><td><b>39</b></td><td>101/240</td><td>50 min</td><td>39 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 39:16 40:5 41:0 43:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-5-5</td><td>sota_rust_R-medium</td><td>Rust</td><td><b>37</b></td><td>127/240</td><td>19 min</td><td>37 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 31:16 35:16 37:16 38:15 39:0 47:0 63:0</small></td></tr><tr><td>claude-sonnet-4-6</td><td>sota_rust_R-low</td><td>Rust</td><td><b>26</b></td><td>113/240</td><td>1.0 h</td><td>26 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 23:16 25:16 26:16 27:1 31:0</small></td></tr><tr><td>claude-sonnet-4-6</td><td>sota_rust_M-low</td><td>Rust</td><td><b>23</b></td><td>84/240</td><td>1.0 h</td><td>23 @ 60 s</td><td><small>1:16 3:16 7:16 15:16 23:16 24:4 25:0 27:0 31:0</small></td></tr></table></div>
 <!-- /GEN:frontier -->
 
 <h2>4. Reproduction of <a href="https://x.com/simonw">@simonw</a>'s experiment</h2>
@@ -251,7 +260,7 @@ no difference to their scores.</li>
 <p>Hardware: see section 4 (<a href="https://x.com/simonw">@simonw</a> on an NVIDIA DGX Spark; our Qwen runs on an M5 Max MacBook Pro via oMLX; Claude's factoring programs built and graded on an M4 MacBook Air).</p>
 <p>In-head arms: one request per case, one at a time, greedy decoding, 16k-token cap, 1 h per arm. add + words uses <a href="https://x.com/simonw">@simonw</a>'s cases, prompt and grader unchanged; mul + words swaps + for ×. SOTA arms: 1 h of development (Qwen: Python, no web, no libraries; Claude: Rust under conditions M / R / L), graded afterwards on fresh cases, factoring on 16 balanced semiprimes per size at 60 s per number.</p>
 <!-- GEN:stamp -->
-<p><small>Tables generated from <code>summary-data.js</code> (2026-10-07T03:45:49.672496+00:00 UTC).</small></p>
+<p><small>Tables generated from <code>summary-data.js</code> (2026-10-07T08:22:28.901368+00:00 UTC).</small></p>
 <!-- /GEN:stamp -->
 </body>
 </html>

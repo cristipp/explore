@@ -1,0 +1,9 @@
+Write the fastest Rust program you can that factors balanced semiprimes: n = p*q where p and q are primes with the same number of digits d. Do your absolute best: you have 60 minutes, starting now. Before the hour ends, review that you have the absolute best algorithm you can think of.
+
+Resources: references only. You may search the web and fetch pages. The program may use the Rust standard library plus only these crates for big integers: num-bigint, num-integer, num-traits (already downloaded; there is no network, so build with `cargo build --release --offline`). Any other dependency fails the build at grading. Multi-core (std::thread) and SIMD (std::arch) are available in the standard library.
+
+Interface: `./factor/target/release/factor --time-limit T` reads JSON lines {"id": ..., "n": <int>} on stdin and prints one JSON line {"id": ..., "answer": "p q"} (smallest first) per input, flushing after each. It must exit within T seconds; on timeout, print {"id": ..., "answer": null, "timeout": true} for anything unanswered and exit with status 0.
+
+Grading, after the hour (the whole hour is yours for development): for a size d we generate 16 fresh balanced semiprimes and run your program on each one separately with --time-limit 60. The size passes if all 16 are factored. Your score is the largest d that passes, found exactly by increasing d (galloping) and then a binary search; a probe stops at its first failure. The grading runs on this machine (Apple M4, 10 cores, CPython 3.12.8), one program at a time, with nothing else running.
+
+Put the program in the cargo project ./factor (already created; build with `cargo build --release` from ./factor) and keep it building and working at all times: whatever is there when the hour ends is built (release) and graded. samples.jsonl has sample inputs at many sizes (not the graded numbers). When you're done, reply with a short note on your approach.

@@ -962,7 +962,7 @@ function timelineChart(ss) {
     const tl = se.run.solution.timeline, c = seriesStyle(se).color, y = mt + i * ROW + 6, h = ROW - 12;
     const steps = stepsOf(tl);
     s += '<text class="ax" x="' + (ml - 10) + '" y="' + (y + h / 2 + 5) + '" text-anchor="end" style="font-size:15px">' +
-      esc(se.run.model.replace('claude-', '').replace(/-5-5$/, ' 5.5') + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</text>';
+      esc(se.run.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</text>';
     const first = steps.length ? steps[0][0] : tl.stopped;
     s += '<rect class="tlseg" data-s="' + esc(se.id) + '" data-k="0" x="' + xs(0) + '" y="' + y + '" width="' + (xs(first) - xs(0)) + '" height="' + h + '" fill="var(--fg)" fill-opacity="0.12"></rect>';
     steps.forEach(([m, d], k) => {
