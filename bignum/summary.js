@@ -1047,12 +1047,15 @@ function renderFrTable(series, isOn) {
       '</td></tr>').join('') +
     '</tbody></table>';
 }
+// tooltip title for a series: SOTA runs as "opus 5.5 max · anything goes", others as their label
+const longLabel = se => se.run.solution ? se.run.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' ' + se.run.level +
+  ' · ' + (COND_WORDS[se.run.solution.cond] || se.run.solution.cond) + (se.sub ? ' (' + se.sub + ')' : '') : se.label;
 function showFrTip(g, evt) {
   const se = frontierSeries()[+g.dataset.s]; if (!se) return;
   const t = se.f.tested[+g.dataset.j]; if (!t) return;
   const wrap = g.closest('.frwrap'), tip = wrap.querySelector('.frtip');
   const k = t.k || se.f.k;
-  tip.innerHTML = '<strong>' + esc(se.label) + '</strong><br>d = ' + esc(t.d) + ' digits<br>' +
+  tip.innerHTML = '<strong>' + esc(longLabel(se)) + '</strong><br>d = ' + esc(t.d) + ' digits<br>' +
     (t.cap === 'skipped' ? 'skipped (previous size 0/' + esc(k) + ') → counted 0/' + esc(k)
       : esc(t.passed || 0) + '/' + esc(k) + ' passed') + '<br>cap: ' + esc(t.cap || '–') +
     (t.t_given_min != null ? ' · time limit ≥ ' + esc(fmtDur(t.t_given_min)) : '') +
