@@ -786,7 +786,7 @@ function renderFrontier() {
     return '<label class="chip frchip' + (isOn(se) ? '' : ' off') + (np ? ' noprog' : '') + '"><input type="checkbox" value="' + esc(se.id) + '"' +
       (isOn(se) ? ' checked' : '') + '><svg viewBox="0 0 34 14"><line x1="2" y1="7" x2="32" y2="7" stroke="' + st.color +
       '" stroke-width="3" stroke-dasharray="' + st.dash + '" opacity="' + st.opacity + '"/>' +
-      shapePath(shapeOf(se.run.mode), 17, 7, 4.5) + ' fill="' + st.color + '"/></svg>' + esc(se.label) +
+      shapePath(shapeOf(se.run.mode), 17, 7, 4.5) + ' fill="' + st.color + '"/></svg>' + esc(longLabel(se)) +
       (np ? ' — <em>no program</em>' : '') +
       '</label>';
   };
