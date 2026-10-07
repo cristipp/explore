@@ -17,7 +17,7 @@ const ORDER = {
 };
 const PALETTE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9', '#D55E00', '#8C6BB1', '#999933',
   '#882255', '#44AA99'];
-// shape = condition on the SOTA page (M no web, no crates, W web, no crates, O anything goes); no thinking / thinking in-head
+// shape = condition on the SOTA page (C no web, no crates, W web, no crates, O anything goes); no thinking / thinking in-head
 const SHAPES = { nothink: 'circle', think: 'square', sota_rust_M: 'circle', sota_rust_R: 'square', sota_rust_L: 'triangle' };
 const shapeOf = mode => SHAPES[mode] || (/^sota/.test(mode) ? 'triangle' : 'diamond');
 function rank(list, v) { const i = list.indexOf(v); return i < 0 ? list.length : i; }
@@ -928,8 +928,8 @@ function drawFrChart(series, shown) {
     s += '<text class="ax" x="' + (W - mr) + '" y="' + (mt - 10) + '" text-anchor="end" style="font-size:14px">◇ = fine frontier (shared cap)</text>';
   frId('fr').innerHTML = s + '</svg>';
 }
-// conditions as shown on the page: letter + name, e.g. "O anything goes" (O = open, W = web; data keeps the internal keys L, R)
-const COND_WORDS = { M: 'M no web, no crates', R: 'W web, no crates', L: 'O anything goes' };
+// conditions as shown on the page: letter + name, e.g. "O anything goes" (O = open, W = web, C = closed; data keeps the internal keys L, R, M)
+const COND_WORDS = { M: 'C no web, no crates', R: 'W web, no crates', L: 'O anything goes' };
 // reach steps anchored to when the winning code was written (default) or to when it was first tested
 const stepsOf = tl => (frAnchorTest ? tl.reach : tl.reach_code || tl.reach) || [];
 function episodesOf(tl) {
