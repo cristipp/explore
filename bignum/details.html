@@ -10,7 +10,7 @@
 <body>
 <nav><a href="index.html">↑ bignum</a> · <a href="inhead_arithmetic.html">inhead_arithmetic</a> · <a href="sota_factorization.html">sota_factorization</a> · <a href="details.html">details</a></nav>
 <h1>bignum — details</h1>
-<p><strong>Status: overnight runs complete (2026-10-06).</strong> SOTA experiment graded; fine frontiers at T = 60 s for
+<p><strong>Status: all runs complete (2026-10-06).</strong> SOTA experiment graded; full no-think grids for all three tasks; fine frontiers at T = 60 s for
 all factoring programs. The tables below are generated
 from the run data; the findings are written by hand. Interactive charts:
 <a href="inhead_arithmetic.html">inhead_arithmetic</a> (in-head) and <a href="sota_factorization.html">sota_factorization</a> (SOTA factoring).</p>
@@ -20,11 +20,13 @@ from the run data; the findings are written by hand. Interactive charts:
 <li><strong><a href="https://x.com/simonw">@simonw</a>'s result reproduces, on two models.</strong> No-thinking addition in words collapses with operand
 length: Flash scores 1,489/5,070 on <a href="https://x.com/simonw">@simonw</a>'s full grid (<a href="https://x.com/simonw">@simonw</a>'s 27B: 1,195), and our 27B scores 44/169 on the paired cases (<a href="https://x.com/simonw">@simonw</a>'s:
 45/169). With thinking, everything is near-perfect (Flash 169/169).</li>
-<li><strong>Multiplication is much harder without thinking.</strong> Flash no-think scores 19/169 on mul + words (vs
-48/169 on add + words); with thinking, 168/169 at high effort.</li>
+<li><strong>Multiplication is much harder without thinking.</strong> Flash no-think scores 596/5,070 (11.8%) on the
+full mul + words grid, against 1,489/5,070 (29.4%) for add + words; on the 169 paired cases, 19 vs 48. With thinking,
+168/169 at high effort; the 27B reaches 165/169 (high) and 148/169 (medium), but needs far more time: 1–8 minutes per
+case at the largest sizes.</li>
 <li><strong>Factoring in the head stops at about 8-digit products.</strong> With thinking, both Qwen models factor
 the 13 easiest numbers (Flash medium: 16), then run into the 16k-token limit or the 1 h budget (19–30 of 91 attempted).
-Without thinking: 2–3/91.</li>
+Without thinking: 2–3/91, and 118/2,730 (4.3%) on Flash's full grid, all of them small numbers.</li>
 <li><strong>Writing a program from training data memories solves add + words and mul + words outright.</strong> Given an hour, no
 internet and no libraries (Python), both Qwen models at high effort write converters that score 169/169 on each task
 and 169/169 on a hidden set of fresh cases.</li>
@@ -71,10 +73,20 @@ number near the frontier is within about 2× across all six (<a href="sota_facto
 <p>Cells: correct/cases, time below (for the SOTA arms on add + words / mul + words, the time includes writing the
 program). † = the 1 h arm budget ran out
 before all cases were tried.</p>
+<p><strong>Runs finished past the 1 h budget.</strong> Three mul + words thinking runs ran out of time with cases left
+and were resumed until every case was answered (accuracy counts all 169 cases; time is the total): Flash medium
+(162/169, 4,649 s), 27B high (165/169, 10,506 s) and 27B medium (148/169, 18,792 s). Under the 1 h budget they had
+reached 156/161, 112/115 and 91/93 of the cases they got to.</p>
+<p><strong>Full grids</strong> (30 cases per digit-length cell, no thinking, Flash): add + words 5,070 cases (as in
+<a href="https://x.com/simonw">@simonw</a>'s headline run), mul + words 5,070 and factoring 2,730. After 144 factoring cases the token cap was lowered from
+16,000 to 1,024: without thinking the model sometimes rambles to the cap (about 210 s per case), and none of the answers
+longer than 1,024 tokens in any no-think factoring run was correct. While the last third of the factoring grid and the
+last 12 cases of 27B medium ran, the m5 server was shared with another job, so their times are inflated (accuracy is
+unaffected: decoding is greedy).</p>
 <!-- GEN:ablation -->
 <h3>add + words</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th><th>SOTA (no web, no libraries, Python, high)</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>44/169<br><small>2 min</small></td><td>162/169<br><small>58 min</small></td><td>167/169<br><small>31 min</small></td><td>169/169<br><small>1.0 h</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>48/169<br><small>1 min</small></td><td>169/169<br><small>11 min</small></td><td>169/169<br><small>10 min</small></td><td>169/169<br><small>26 min</small></td></tr></table></div>
-<h3>mul + words</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th><th>SOTA (no web, no libraries, Python, high)</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>16/169<br><small>30 min</small></td><td>91/169 †<br><small>1.0 h · 93 tried</small></td><td>158/169 †<br><small>2.5 h · 162 tried</small></td><td>169/169<br><small>36 min</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>19/169<br><small>1 min</small></td><td>162/169<br><small>1.3 h</small></td><td>168/169<br><small>56 min</small></td><td>169/169<br><small>36 min</small></td></tr></table></div>
-<h3>factor</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>2/91 ⧗<br><small>28 min · 86 tried</small></td><td>13/91 †<br><small>1.1 h · 19 tried</small></td><td>13/91 †<br><small>1.1 h · 19 tried</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>3/91<br><small>3 min</small></td><td>16/91 †<br><small>1.0 h · 30 tried</small></td><td>13/91 †<br><small>1.0 h · 28 tried</small></td></tr></table></div>
+<h3>mul + words</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th><th>SOTA (no web, no libraries, Python, high)</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>16/169<br><small>30 min</small></td><td>148/169<br><small>5.2 h</small></td><td>165/169<br><small>2.9 h</small></td><td>169/169<br><small>36 min</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>19/169<br><small>1 min</small></td><td>162/169<br><small>1.3 h</small></td><td>168/169<br><small>56 min</small></td><td>169/169<br><small>36 min</small></td></tr></table></div>
+<h3>factor</h3><div class='wide'><table><tr><th>model</th><th>nothink</th><th>think-medium</th><th>think-high</th></tr><tr><th>Qwen3.8-27B-oQ4e-mtp</th><td>2/91<br><small>38 min</small></td><td>13/91 †<br><small>1.1 h · 19 tried</small></td><td>13/91 †<br><small>1.1 h · 19 tried</small></td></tr><tr><th>Qwen3.8-Flash-Next-oQ4e-mtp</th><td>3/91<br><small>3 min</small></td><td>16/91 †<br><small>1.0 h · 30 tried</small></td><td>13/91 †<br><small>1.0 h · 28 tried</small></td></tr></table></div>
 <!-- /GEN:ablation -->
 
 <h2>3. Factoring frontier</h2>
@@ -239,7 +251,7 @@ no difference to their scores.</li>
 <p>Hardware: see section 4 (<a href="https://x.com/simonw">@simonw</a> on an NVIDIA DGX Spark; our Qwen runs on an M5 Max MacBook Pro via oMLX; Claude's factoring programs built and graded on an M4 MacBook Air).</p>
 <p>In-head arms: one request per case, one at a time, greedy decoding, 16k-token cap, 1 h per arm. add + words uses <a href="https://x.com/simonw">@simonw</a>'s cases, prompt and grader unchanged; mul + words swaps + for ×. SOTA arms: 1 h of development (Qwen: Python, no web, no libraries; Claude: Rust under conditions M / R / L), graded afterwards on fresh cases, factoring on 16 balanced semiprimes per size at 60 s per number.</p>
 <!-- GEN:stamp -->
-<p><small>Tables generated from <code>summary-data.js</code> (2026-10-06T21:00:55.421632+00:00 UTC).</small></p>
+<p><small>Tables generated from <code>summary-data.js</code> (2026-10-07T03:45:49.672496+00:00 UTC).</small></p>
 <!-- /GEN:stamp -->
 </body>
 </html>
