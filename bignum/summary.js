@@ -955,7 +955,7 @@ function episodeTip(se, e) {
 // one bar per run on a 60-minute axis: grey until the first measured result, then one segment per reach level
 // (largest d its program factored within 60 s, by the model's own tests), shaded darker for more digits
 function timelineChart(ss) {
-  const ROW = 34, W = 960, ml = 250, mr = 24, mt = 30, mb = 96, H = mt + mb + ROW * ss.length;
+  const ROW = 34, W = 960, ml = 320, mr = 24, mt = 30, mb = 96, H = mt + mb + ROW * ss.length;
   const xs = v => ml + v / 60 * (W - ml - mr);
   const shade = d => Math.max(0.12, Math.min(1, 0.12 + 0.88 * (d - 30) / 12)); // d <= 30 lightest, 42 full
   let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="how each SOTA session spent its hour, by reach over time">';
@@ -965,7 +965,7 @@ function timelineChart(ss) {
     const tl = se.run.solution.timeline, c = seriesStyle(se).color, y = mt + i * ROW + 6, h = ROW - 12;
     const steps = stepsOf(tl);
     s += '<text class="ax" x="' + (ml - 10) + '" y="' + (y + h / 2 + 5) + '" text-anchor="end" style="font-size:15px">' +
-      esc(se.run.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</text>';
+      esc(se.run.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' ' + se.run.level + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</text>';
     const first = steps.length ? steps[0][0] : tl.stopped;
     s += '<rect class="tlseg" data-s="' + esc(se.id) + '" data-k="0" x="' + xs(0) + '" y="' + y + '" width="' + (xs(first) - xs(0)) + '" height="' + h + '" fill="var(--fg)" fill-opacity="0.12"></rect>';
     steps.forEach(([m, d], k) => {
@@ -978,7 +978,7 @@ function timelineChart(ss) {
       // hover target: the marker and the rest of the bar after it (the final code, until the session stopped)
       '<rect class="tlfinal" data-s="' + esc(se.id) + '" x="' + (xs(tl.last_edit) - 6) + '" y="' + (y - 3) + '" width="' +
       Math.max(12, xs(tl.stopped) - xs(tl.last_edit) + 6) + '" height="' + (h + 6) + '" fill="transparent"/>';
-    s += '<rect x="' + xs(tl.stopped) + '" y="' + y + '" width="' + (xs(60) - xs(tl.stopped)) + '" height="' + h +
+    if (60 - tl.stopped >= 1) s += '<rect x="' + xs(tl.stopped) + '" y="' + y + '" width="' + (xs(60) - xs(tl.stopped)) + '" height="' + h +
       '" fill="none" stroke="var(--rule)" stroke-dasharray="4 3"><title>' + esc(se.label + ': unused, ' + (60 - tl.stopped).toFixed(0) + ' min') + '</title></rect>' +
       '<text class="ax" x="' + (xs(tl.stopped) + 6) + '" y="' + (y + h / 2 + 5) + '" style="font-size:13px">' + (60 - tl.stopped).toFixed(0) + ' min unused</text>';
   });
@@ -1005,11 +1005,24 @@ function codingScatter(ss) {
     '<text class="ax" x="' + (ml - 6) + '" y="' + (ys(v) + 4) + '" text-anchor="end">' + fmtInt(v) + '</text>';
   s += '<text class="axt" x="' + ((ml + W - mr) / 2) + '" y="' + (H - 12) + '" text-anchor="middle">coding time (min)</text>' +
     '<text class="axt" transform="translate(22,' + ((mt + H - mb) / 2) + ') rotate(-90)" text-anchor="middle">code length (lines)</text>';
-  ss.forEach(se => {
+  // labels: right of the point (left near the right edge); nudged up/down until they don't overlap a placed label
+  const placed = [], CW = 7.6, LH = 18;
+  const hits = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+  ss.slice().sort((a, b) => tx(a) - tx(b) || ty(b) - ty(a)).forEach(se => {
     const st = seriesStyle(se), so = se.run.solution, ff = fineOf(se.run), x = xs(tx(se)), y = ys(ty(se));
+    const text = ({ M: 'no web, no crates', R: 'web, no crates', L: 'anything goes' }[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '');
+    const left = x > W - mr - (W - ml - mr) / 4, w = text.length * CW;
+    let box = null, ly = y + 5;
+    for (const dy of [0, -LH, LH, -2 * LH, 2 * LH, -3 * LH, 3 * LH]) {
+      const x0 = left ? x - 12 - w : x + 12, b = { x0, x1: x0 + w, y0: y + dy - 9, y1: y + dy + 9 };
+      if (!placed.some(p => hits(p, b))) { box = b; ly = y + dy + 5; break; }
+    }
+    if (!box) { const x0 = left ? x - 12 - w : x + 12; box = { x0, x1: x0 + w, y0: y - 9, y1: y + 9 }; }
+    placed.push(box, { x0: x - 10, x1: x + 10, y0: y - 10, y1: y + 10 });
     s += '<g><title>' + esc(se.label + ': ' + fmtDur(so.dev_seconds) + ' coding, ' + fmtInt(so.lines) + ' lines' +
       (ff ? ', fine frontier ' + ff.fine_frontier : '')) + '</title>' + shapePath(shapeOf(se.run.mode), x, y, 9) + ' fill="' + st.color + '"/>' +
-      '<text class="ax" x="' + (x + 12) + '" y="' + (y + 5) + '" style="font-size:15px">' + esc(({ M: 'no web, no crates', R: 'web, no crates', L: 'anything goes' }[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '')) + '</text></g>';
+      '<text class="ax" x="' + (left ? x - 12 : x + 12) + '" text-anchor="' + (left ? 'end' : 'start') + '" y="' + ly +
+      '" style="font-size:15px;fill:' + st.color + '">' + esc(text) + '</text></g>';
   });
   return s + '</svg>';
 }
