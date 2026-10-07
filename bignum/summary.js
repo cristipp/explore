@@ -17,7 +17,7 @@ const ORDER = {
 };
 const PALETTE = ['#0072B2', '#E69F00', '#009E73', '#CC79A7', '#56B4E9', '#D55E00', '#8C6BB1', '#999933',
   '#882255', '#44AA99'];
-// shape = condition on the SOTA page (M no web, no crates, R web, no crates, L anything goes); no thinking / thinking in-head
+// shape = condition on the SOTA page (C no web, no crates, W web, no crates, O anything goes); no thinking / thinking in-head
 const SHAPES = { nothink: 'circle', think: 'square', sota_rust_M: 'circle', sota_rust_R: 'square', sota_rust_L: 'triangle' };
 const shapeOf = mode => SHAPES[mode] || (/^sota/.test(mode) ? 'triangle' : 'diamond');
 function rank(list, v) { const i = list.indexOf(v); return i < 0 ? list.length : i; }
@@ -727,13 +727,16 @@ const frDefaultOn = se => !noProg(se);
 const frIsOn = se => frDefaultOn(se) !== frOff.includes(se.id);
 // SOTA conditions, least to most constrained: anything goes, web no crates, no web no crates
 const COND_ORDER = ['L', 'R', 'M'];
+// strongest first: Opus 5.5, Sonnet 5.5, then Sonnet 4.6
+const SOTA_MODEL_ORDER = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-sonnet-4-6'];
 // readable names for the two no-thinking runs on add + words
 const ARM_TEXT = { nothink: '169 cases (paired with thinking)', 'nothink-grid': 'full grid (5,070 cases, @simonw’s headline)' };
 function frontierSeries() {
   const out = [];
   const condRank = r => rank(COND_ORDER, r.solution ? r.solution.cond : '');
   const rs = RUNS.filter(r => r.frontier && Array.isArray(r.frontier.tested))
-    .sort((a, b) => String(a.model).localeCompare(b.model) || condRank(a) - condRank(b));
+    .sort((a, b) => rank(SOTA_MODEL_ORDER, a.model) - rank(SOTA_MODEL_ORDER, b.model) ||
+      String(a.model).localeCompare(b.model) || condRank(a) - condRank(b));
   rs.forEach(r => {
     const dup = rs.filter(x => x.model === r.model && x.arm === r.arm).length > 1;
     const base = r.model_short + '/' + r.arm + (dup ? '/' + r.source : '');
@@ -783,7 +786,7 @@ function renderFrontier() {
     return '<label class="chip frchip' + (isOn(se) ? '' : ' off') + (np ? ' noprog' : '') + '"><input type="checkbox" value="' + esc(se.id) + '"' +
       (isOn(se) ? ' checked' : '') + '><svg viewBox="0 0 34 14"><line x1="2" y1="7" x2="32" y2="7" stroke="' + st.color +
       '" stroke-width="3" stroke-dasharray="' + st.dash + '" opacity="' + st.opacity + '"/>' +
-      shapePath(shapeOf(se.run.mode), 17, 7, 4.5) + ' fill="' + st.color + '"/></svg>' + esc(se.label) +
+      shapePath(shapeOf(se.run.mode), 17, 7, 4.5) + ' fill="' + st.color + '"/></svg>' + esc(longLabel(se)) +
       (np ? ' — <em>no program</em>' : '') +
       '</label>';
   };
@@ -925,7 +928,8 @@ function drawFrChart(series, shown) {
     s += '<text class="ax" x="' + (W - mr) + '" y="' + (mt - 10) + '" text-anchor="end" style="font-size:14px">◇ = fine frontier (shared cap)</text>';
   frId('fr').innerHTML = s + '</svg>';
 }
-const COND_WORDS = { M: 'no web, no crates', R: 'web, no crates', L: 'anything goes' };
+// conditions as shown on the page: letter + name, e.g. "O anything goes" (O = open, W = web, C = closed; data keeps the internal keys L, R, M)
+const COND_WORDS = { M: 'C no web, no crates', R: 'W web, no crates', L: 'O anything goes' };
 // reach steps anchored to when the winning code was written (default) or to when it was first tested
 const stepsOf = tl => (frAnchorTest ? tl.reach : tl.reach_code || tl.reach) || [];
 function episodesOf(tl) {
@@ -939,12 +943,12 @@ function episodesOf(tl) {
 function finalTip(se) {
   const tl = se.run.solution.timeline, steps = stepsOf(tl), last = steps[steps.length - 1], f = tl.final || {};
   const firstAt = tl.reach_code && tl.reach_code.length ? tl.reach_code[tl.reach_code.length - 1][0] : null;
-  return '<strong>' + esc(se.run.model + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</strong><br>final code version at ' +
+  return '<strong>' + esc(longLabel(se)) + '</strong><br>final code version at ' +
     tl.last_edit + ' min (graded as is)' + (last ? '<br>same reach d = ' + last[1] + ' as the code written at ' + firstAt + ' min' : '') +
     (f.changes ? '<br><strong>changed since:</strong> ' + esc(f.changes) : '') + (f.effect ? '<br><strong>effect:</strong> ' + esc(f.effect) : '');
 }
 function episodeTip(se, e) {
-  return '<strong>' + esc(se.run.model + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</strong><br>minutes ' + e.from + '–' + e.to +
+  return '<strong>' + esc(longLabel(se)) + '</strong><br>minutes ' + e.from + '–' + e.to +
     ' · ' + (e.d == null ? 'writing' : 'reach d = ' + e.d) +
     (e.d != null && e.code != null ? '<br>code written at ' + e.code + ' min · first tested at ' + e.test + ' min' : '') + (e.solution ? '<br>' + esc(e.solution) : '') +
     (e.measured ? '<br><em>' + esc(e.measured) + '</em>' : '');
@@ -952,7 +956,7 @@ function episodeTip(se, e) {
 // one bar per run on a 60-minute axis: grey until the first measured result, then one segment per reach level
 // (largest d its program factored within 60 s, by the model's own tests), shaded darker for more digits
 function timelineChart(ss) {
-  const ROW = 34, W = 960, ml = 250, mr = 24, mt = 30, mb = 96, H = mt + mb + ROW * ss.length;
+  const ROW = 34, W = 960, ml = 320, mr = 24, mt = 30, mb = 96, H = mt + mb + ROW * ss.length;
   const xs = v => ml + v / 60 * (W - ml - mr);
   const shade = d => Math.max(0.12, Math.min(1, 0.12 + 0.88 * (d - 30) / 12)); // d <= 30 lightest, 42 full
   let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="how each SOTA session spent its hour, by reach over time">';
@@ -962,7 +966,7 @@ function timelineChart(ss) {
     const tl = se.run.solution.timeline, c = seriesStyle(se).color, y = mt + i * ROW + 6, h = ROW - 12;
     const steps = stepsOf(tl);
     s += '<text class="ax" x="' + (ml - 10) + '" y="' + (y + h / 2 + 5) + '" text-anchor="end" style="font-size:15px">' +
-      esc(se.run.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</text>';
+      esc(se.run.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' ' + se.run.level + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</text>';
     const first = steps.length ? steps[0][0] : tl.stopped;
     s += '<rect class="tlseg" data-s="' + esc(se.id) + '" data-k="0" x="' + xs(0) + '" y="' + y + '" width="' + (xs(first) - xs(0)) + '" height="' + h + '" fill="var(--fg)" fill-opacity="0.12"></rect>';
     steps.forEach(([m, d], k) => {
@@ -975,7 +979,7 @@ function timelineChart(ss) {
       // hover target: the marker and the rest of the bar after it (the final code, until the session stopped)
       '<rect class="tlfinal" data-s="' + esc(se.id) + '" x="' + (xs(tl.last_edit) - 6) + '" y="' + (y - 3) + '" width="' +
       Math.max(12, xs(tl.stopped) - xs(tl.last_edit) + 6) + '" height="' + (h + 6) + '" fill="transparent"/>';
-    s += '<rect x="' + xs(tl.stopped) + '" y="' + y + '" width="' + (xs(60) - xs(tl.stopped)) + '" height="' + h +
+    if (60 - tl.stopped >= 1) s += '<rect x="' + xs(tl.stopped) + '" y="' + y + '" width="' + (xs(60) - xs(tl.stopped)) + '" height="' + h +
       '" fill="none" stroke="var(--rule)" stroke-dasharray="4 3"><title>' + esc(se.label + ': unused, ' + (60 - tl.stopped).toFixed(0) + ' min') + '</title></rect>' +
       '<text class="ax" x="' + (xs(tl.stopped) + 6) + '" y="' + (y + h / 2 + 5) + '" style="font-size:13px">' + (60 - tl.stopped).toFixed(0) + ' min unused</text>';
   });
@@ -1002,11 +1006,24 @@ function codingScatter(ss) {
     '<text class="ax" x="' + (ml - 6) + '" y="' + (ys(v) + 4) + '" text-anchor="end">' + fmtInt(v) + '</text>';
   s += '<text class="axt" x="' + ((ml + W - mr) / 2) + '" y="' + (H - 12) + '" text-anchor="middle">coding time (min)</text>' +
     '<text class="axt" transform="translate(22,' + ((mt + H - mb) / 2) + ') rotate(-90)" text-anchor="middle">code length (lines)</text>';
-  ss.forEach(se => {
+  // labels: right of the point (left near the right edge); nudged up/down until they don't overlap a placed label
+  const placed = [], CW = 7.6, LH = 18;
+  const hits = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+  ss.slice().sort((a, b) => tx(a) - tx(b) || ty(b) - ty(a)).forEach(se => {
     const st = seriesStyle(se), so = se.run.solution, ff = fineOf(se.run), x = xs(tx(se)), y = ys(ty(se));
+    const text = (COND_WORDS[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '');
+    const left = x > W - mr - (W - ml - mr) / 4, w = text.length * CW;
+    let box = null, ly = y + 5;
+    for (const dy of [0, -LH, LH, -2 * LH, 2 * LH, -3 * LH, 3 * LH]) {
+      const x0 = left ? x - 12 - w : x + 12, b = { x0, x1: x0 + w, y0: y + dy - 9, y1: y + dy + 9 };
+      if (!placed.some(p => hits(p, b))) { box = b; ly = y + dy + 5; break; }
+    }
+    if (!box) { const x0 = left ? x - 12 - w : x + 12; box = { x0, x1: x0 + w, y0: y - 9, y1: y + 9 }; }
+    placed.push(box, { x0: x - 10, x1: x + 10, y0: y - 10, y1: y + 10 });
     s += '<g><title>' + esc(se.label + ': ' + fmtDur(so.dev_seconds) + ' coding, ' + fmtInt(so.lines) + ' lines' +
       (ff ? ', fine frontier ' + ff.fine_frontier : '')) + '</title>' + shapePath(shapeOf(se.run.mode), x, y, 9) + ' fill="' + st.color + '"/>' +
-      '<text class="ax" x="' + (x + 12) + '" y="' + (y + 5) + '" style="font-size:15px">' + esc(({ M: 'no web, no crates', R: 'web, no crates', L: 'anything goes' }[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '')) + '</text></g>';
+      '<text class="ax" x="' + (left ? x - 12 : x + 12) + '" text-anchor="' + (left ? 'end' : 'start') + '" y="' + ly +
+      '" style="font-size:15px;fill:' + st.color + '">' + esc(text) + '</text></g>';
   });
   return s + '</svg>';
 }
@@ -1015,7 +1032,7 @@ function renderEpisodes(shown) {
   const rows = [];
   shown.filter(se => !se.sub && se.run.solution && se.run.solution.timeline).forEach(se => episodesOf(se.run.solution.timeline).forEach(e =>
     rows.push('<tr><td>' + esc(COND[se.run.solution.cond] || '') + '</td><td><span style="color:' + seriesStyle(se).color + '">■</span> ' +
-      esc(se.run.model + ' · ' + se.run.level) + '</td><td class="num">' + (e.d == null ? '0–' + e.to : e.code + ' / ' + e.test) + ' min</td><td class="num">' +
+      esc(prettyModel(se.run)) + '</td><td class="num">' + (e.d == null ? '0–' + e.to : e.code + ' / ' + e.test) + ' min</td><td class="num">' +
       (e.d == null ? '<em>writing</em>' : '<strong>' + e.d + '</strong>') + '</td><td>' + esc(e.solution || '–') + '</td><td>' + esc(e.measured || '') + '</td></tr>')));
   el.innerHTML = rows.length ? '<table><thead><tr><th>condition</th><th>model · effort</th><th class="num">code written / first tested</th><th class="num">reach d</th>' +
     '<th>solution at this point</th><th>measured</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>' : '';
@@ -1023,7 +1040,7 @@ function renderEpisodes(shown) {
 function renderFrTable(series, isOn) {
   document.getElementById('frtable').innerHTML = '<table><thead><tr><th>run</th><th>frontier d</th><th>first failure d</th>' +
     '<th>sizes run</th><th>fine</th></tr></thead><tbody>' + series.map(se => '<tr class="' + (isOn(se) ? '' : 'off') + '"><td>' +
-      '<span style="color:' + seriesStyle(se).color + '">■</span> ' + esc(se.label) + '</td><td>' +
+      '<span style="color:' + seriesStyle(se).color + '">■</span> ' + esc(longLabel(se)) + '</td><td>' +
       (noProg(se) ? '<em>no program</em>' : esc(se.f.frontier_digits != null ? se.f.frontier_digits : '–')) + '</td><td>' +
       esc(se.f.first_failure_digits != null ? se.f.first_failure_digits : 'none') + '</td><td>' +
       se.f.tested.filter(t => t.cap !== 'skipped').length + '/' + (se.f.points || se.f.tested).length + '</td><td>' +
@@ -1031,12 +1048,17 @@ function renderFrTable(series, isOn) {
       '</td></tr>').join('') +
     '</tbody></table>';
 }
+// "opus 5.5 max": model without the vendor prefix, version with a dot, then the effort level
+const prettyModel = r => r.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' ' + r.level;
+// tooltip title for a series: SOTA runs as "opus 5.5 max · O anything goes", others as their label
+const longLabel = se => se.run.solution ? se.run.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' ' + se.run.level +
+  ' · ' + (COND_WORDS[se.run.solution.cond] || se.run.solution.cond) + (se.sub ? ' (' + se.sub + ')' : '') : se.label;
 function showFrTip(g, evt) {
   const se = frontierSeries()[+g.dataset.s]; if (!se) return;
   const t = se.f.tested[+g.dataset.j]; if (!t) return;
   const wrap = g.closest('.frwrap'), tip = wrap.querySelector('.frtip');
   const k = t.k || se.f.k;
-  tip.innerHTML = '<strong>' + esc(se.label) + '</strong><br>d = ' + esc(t.d) + ' digits<br>' +
+  tip.innerHTML = '<strong>' + esc(longLabel(se)) + '</strong><br>d = ' + esc(t.d) + ' digits<br>' +
     (t.cap === 'skipped' ? 'skipped (previous size 0/' + esc(k) + ') → counted 0/' + esc(k)
       : esc(t.passed || 0) + '/' + esc(k) + ' passed') + '<br>cap: ' + esc(t.cap || '–') +
     (t.t_given_min != null ? ' · time limit ≥ ' + esc(fmtDur(t.t_given_min)) : '') +
@@ -1300,10 +1322,10 @@ function renderLive(flash, err) {
     flashT = setTimeout(() => el.classList.remove('flash'), 1800);
   }
 }
-const COND = { M: 'M · no web, no crates', R: 'R · web, no crates', L: 'L · anything goes' };
+const COND = COND_WORDS; // tables use the same names
 function renderSota() {
   const rs = RUNS.filter(r => r.solution).sort((a, b) => rank(COND_ORDER, a.solution.cond) - rank(COND_ORDER, b.solution.cond) ||
-    String(a.model).localeCompare(b.model));
+    rank(SOTA_MODEL_ORDER, a.model) - rank(SOTA_MODEL_ORDER, b.model));
   const el = document.getElementById('sotatable');
   ['sota', 'sotatable'].forEach(id => { document.getElementById(id).hidden = !rs.length; });
   if (!rs.length) { el.innerHTML = ''; return; }
@@ -1314,7 +1336,7 @@ function renderSota() {
       const so = r.solution, ff = fineOf(r), c = modelColor(r.model);
       const w = Math.round(120 * (so.dev_seconds || 0) / maxDev);
       return '<tr><td>' + esc(COND[so.cond] || so.cond) + '</td><td><span style="color:' + c + '">■</span> ' +
-        esc(r.model + ' · ' + r.level) + '</td><td>' + esc(so.approach || '–') + '</td><td class="num">' +
+        esc(prettyModel(r)) + '</td><td>' + esc(so.approach || '–') + '</td><td class="num">' +
         '<span class="bar" style="width:' + w + 'px;background:' + c + '"></span>' + esc(fmtDurRound(so.dev_seconds || 0)) +
         '</td><td class="num">' + esc(so.lines) + ' lines</td><td>' +
         esc(so.crates.length ? so.crates.join(', ') + (so.vendored ? ' (vendored)' : '') : 'none') + '</td><td class="num"><strong>' +
