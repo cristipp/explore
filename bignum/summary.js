@@ -1032,7 +1032,7 @@ function renderEpisodes(shown) {
   const rows = [];
   shown.filter(se => !se.sub && se.run.solution && se.run.solution.timeline).forEach(se => episodesOf(se.run.solution.timeline).forEach(e =>
     rows.push('<tr><td>' + esc(COND[se.run.solution.cond] || '') + '</td><td><span style="color:' + seriesStyle(se).color + '">■</span> ' +
-      esc(se.run.model + ' · ' + se.run.level) + '</td><td class="num">' + (e.d == null ? '0–' + e.to : e.code + ' / ' + e.test) + ' min</td><td class="num">' +
+      esc(prettyModel(se.run)) + '</td><td class="num">' + (e.d == null ? '0–' + e.to : e.code + ' / ' + e.test) + ' min</td><td class="num">' +
       (e.d == null ? '<em>writing</em>' : '<strong>' + e.d + '</strong>') + '</td><td>' + esc(e.solution || '–') + '</td><td>' + esc(e.measured || '') + '</td></tr>')));
   el.innerHTML = rows.length ? '<table><thead><tr><th>condition</th><th>model · effort</th><th class="num">code written / first tested</th><th class="num">reach d</th>' +
     '<th>solution at this point</th><th>measured</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>' : '';
@@ -1040,7 +1040,7 @@ function renderEpisodes(shown) {
 function renderFrTable(series, isOn) {
   document.getElementById('frtable').innerHTML = '<table><thead><tr><th>run</th><th>frontier d</th><th>first failure d</th>' +
     '<th>sizes run</th><th>fine</th></tr></thead><tbody>' + series.map(se => '<tr class="' + (isOn(se) ? '' : 'off') + '"><td>' +
-      '<span style="color:' + seriesStyle(se).color + '">■</span> ' + esc(se.label) + '</td><td>' +
+      '<span style="color:' + seriesStyle(se).color + '">■</span> ' + esc(longLabel(se)) + '</td><td>' +
       (noProg(se) ? '<em>no program</em>' : esc(se.f.frontier_digits != null ? se.f.frontier_digits : '–')) + '</td><td>' +
       esc(se.f.first_failure_digits != null ? se.f.first_failure_digits : 'none') + '</td><td>' +
       se.f.tested.filter(t => t.cap !== 'skipped').length + '/' + (se.f.points || se.f.tested).length + '</td><td>' +
@@ -1048,6 +1048,8 @@ function renderFrTable(series, isOn) {
       '</td></tr>').join('') +
     '</tbody></table>';
 }
+// "opus 5.5 max": model without the vendor prefix, version with a dot, then the effort level
+const prettyModel = r => r.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' ' + r.level;
 // tooltip title for a series: SOTA runs as "opus 5.5 max · L anything goes", others as their label
 const longLabel = se => se.run.solution ? se.run.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' ' + se.run.level +
   ' · ' + (COND_WORDS[se.run.solution.cond] || se.run.solution.cond) + (se.sub ? ' (' + se.sub + ')' : '') : se.label;
@@ -1334,7 +1336,7 @@ function renderSota() {
       const so = r.solution, ff = fineOf(r), c = modelColor(r.model);
       const w = Math.round(120 * (so.dev_seconds || 0) / maxDev);
       return '<tr><td>' + esc(COND[so.cond] || so.cond) + '</td><td><span style="color:' + c + '">■</span> ' +
-        esc(r.model + ' · ' + r.level) + '</td><td>' + esc(so.approach || '–') + '</td><td class="num">' +
+        esc(prettyModel(r)) + '</td><td>' + esc(so.approach || '–') + '</td><td class="num">' +
         '<span class="bar" style="width:' + w + 'px;background:' + c + '"></span>' + esc(fmtDurRound(so.dev_seconds || 0)) +
         '</td><td class="num">' + esc(so.lines) + ' lines</td><td>' +
         esc(so.crates.length ? so.crates.join(', ') + (so.vendored ? ' (vendored)' : '') : 'none') + '</td><td class="num"><strong>' +
