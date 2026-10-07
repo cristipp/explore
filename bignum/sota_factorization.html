@@ -14,7 +14,7 @@
 <p class="intro"><strong>Hypotheses</strong>, stated before the runs: (1) a competent coder converges on the state of the art whatever the constraints:
 with libraries it calls the best library, with references but no libraries it implements the best algorithm, and from
 training data memories alone it still implements the best algorithm. (2) Above a competency threshold, the model doesn't matter. To
-test both, Sonnet 5.5 medium and Opus 5.5 max each ran under three conditions (L, R, M below). Later, Sonnet 4.6 at low
+test both, Sonnet 5.5 medium and Opus 5.5 max each ran under three conditions (O, R, M below). Later, Sonnet 4.6 at low
 effort, the weakest model on the plan, ran the same three, to probe the threshold.</p>
 <p class="intro"><strong>Verdict: both hold above a competency threshold, and Sonnet 4.6 low is below it.</strong>
 (1) All six runs by Sonnet 5.5 medium and Opus 5.5 max built a self-initialising quadratic sieve, the standard best
@@ -23,7 +23,7 @@ Opus with libraries used the <code>rusqsieve</code> crate for 41. Sonnet 4.6 low
 also found <code>rusqsieve</code> (after a web search) and reached 40, but on its own it chose ECM with Pollard's rho
 (R web, no crates: 26) or wrote a plain quadratic sieve (M no web, no crates: 23), and in both it ran out the hour.
 (2) Above the threshold the model matters only by a thin margin: Opus max is at or above Sonnet 5.5 medium in every
-condition, by 0 to 3 digits (L anything goes 41 vs 39; R web, no crates 40 vs 37; M no web, no crates 40 = 40). Below it the
+condition, by 0 to 3 digits (O anything goes 41 vs 39; R web, no crates 40 vs 37; M no web, no crates 40 = 40). Below it the
 model matters a lot (23–26 vs 37–41), unless a library closes the gap. The R web, no crates condition changed behaviour
 without being used: the 5.5 runs stopped after about 20 minutes (Sonnet 19, Opus 21), against 38–52 for their other four,
 and scored at or below their no-web twins. What differs above the threshold is the solution each model chose and how long
@@ -34,7 +34,7 @@ it took to write it.</p>
 </div>
 <h2 id="sota">What each model built</h2>
 <p class="note">Each model had 1 h to write the best factoring program it could, in Rust, with the grading rules stated
-up front. L = anything goes (any crate + web), R = web, no crates (web allowed but never used; std + the big-int whitelist), M =
+up front. O = anything goes (any crate + web), R = web, no crates (web allowed but never used; std + the big-int whitelist), M =
 no web, no crates (std + a small big-int crate whitelist). Programs differ only in which solution the model chose and how long it took to write; the
 chart below checks that their runtime performance is indeed similar.</p>
 <p class="note">Hardware: the models ran as Claude Code sessions in the cloud, but built, benchmarked and tuned their
@@ -53,7 +53,7 @@ it built a different algorithm (ECM). Future runs will be isolated.</p>
 <h2 id="frontier">How the programs were built and how they run</h2>
 <p class="note" id="frnote">Each SOTA program, graded after its hour on an idle machine: p and q both have d digits,
 with 16 fresh pairs per size and T = 60 s per number. Three views of the same runs; the run selector below applies to
-all three. Color = model; shape (and line style) = condition: ▲ L anything goes, ■ R web, no crates, ● M no web, no crates. By default only fully factored sizes (16/16) are drawn. Tick “partial factorization success” to add the sizes where fewer than 16 pairs were factored (hollow markers), and ◇ at the fine frontier: the exact largest d with 16/16 (galloping + binary search).</p>
+all three. Color = model; shape (and line style) = condition: ▲ O anything goes, ■ R web, no crates, ● M no web, no crates. By default only fully factored sizes (16/16) are drawn. Tick “partial factorization success” to add the sizes where fewer than 16 pairs were factored (hollow markers), and ◇ at the fine frontier: the exact largest d with 16/16 (galloping + binary search).</p>
 <div class="chips" id="frmwrap"><label class="chip"><input type="checkbox" id="franchor"> anchor to tests</label>
   <label class="chip"><input type="checkbox" id="frfine"> partial factorization success</label></div>
 <div class="chips" id="frlegend" role="group" aria-label="Runs shown in the three frontier charts"></div>
