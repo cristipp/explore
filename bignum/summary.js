@@ -928,7 +928,8 @@ function drawFrChart(series, shown) {
     s += '<text class="ax" x="' + (W - mr) + '" y="' + (mt - 10) + '" text-anchor="end" style="font-size:14px">◇ = fine frontier (shared cap)</text>';
   frId('fr').innerHTML = s + '</svg>';
 }
-const COND_WORDS = { M: 'no web, no crates', R: 'web, no crates', L: 'anything goes' };
+// conditions as shown on the page: letter + name, e.g. "L anything goes"
+const COND_WORDS = { M: 'M no web, no crates', R: 'R web, no crates', L: 'L anything goes' };
 // reach steps anchored to when the winning code was written (default) or to when it was first tested
 const stepsOf = tl => (frAnchorTest ? tl.reach : tl.reach_code || tl.reach) || [];
 function episodesOf(tl) {
@@ -942,12 +943,12 @@ function episodesOf(tl) {
 function finalTip(se) {
   const tl = se.run.solution.timeline, steps = stepsOf(tl), last = steps[steps.length - 1], f = tl.final || {};
   const firstAt = tl.reach_code && tl.reach_code.length ? tl.reach_code[tl.reach_code.length - 1][0] : null;
-  return '<strong>' + esc(se.run.model + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</strong><br>final code version at ' +
+  return '<strong>' + esc(longLabel(se)) + '</strong><br>final code version at ' +
     tl.last_edit + ' min (graded as is)' + (last ? '<br>same reach d = ' + last[1] + ' as the code written at ' + firstAt + ' min' : '') +
     (f.changes ? '<br><strong>changed since:</strong> ' + esc(f.changes) : '') + (f.effect ? '<br><strong>effect:</strong> ' + esc(f.effect) : '');
 }
 function episodeTip(se, e) {
-  return '<strong>' + esc(se.run.model + ' · ' + (COND_WORDS[se.run.solution.cond] || '')) + '</strong><br>minutes ' + e.from + '–' + e.to +
+  return '<strong>' + esc(longLabel(se)) + '</strong><br>minutes ' + e.from + '–' + e.to +
     ' · ' + (e.d == null ? 'writing' : 'reach d = ' + e.d) +
     (e.d != null && e.code != null ? '<br>code written at ' + e.code + ' min · first tested at ' + e.test + ' min' : '') + (e.solution ? '<br>' + esc(e.solution) : '') +
     (e.measured ? '<br><em>' + esc(e.measured) + '</em>' : '');
@@ -1010,7 +1011,7 @@ function codingScatter(ss) {
   const hits = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
   ss.slice().sort((a, b) => tx(a) - tx(b) || ty(b) - ty(a)).forEach(se => {
     const st = seriesStyle(se), so = se.run.solution, ff = fineOf(se.run), x = xs(tx(se)), y = ys(ty(se));
-    const text = ({ M: 'no web, no crates', R: 'web, no crates', L: 'anything goes' }[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '');
+    const text = (COND_WORDS[so.cond] || so.cond) + (ff ? ' · ' + ff.fine_frontier : '');
     const left = x > W - mr - (W - ml - mr) / 4, w = text.length * CW;
     let box = null, ly = y + 5;
     for (const dy of [0, -LH, LH, -2 * LH, 2 * LH, -3 * LH, 3 * LH]) {
@@ -1047,7 +1048,7 @@ function renderFrTable(series, isOn) {
       '</td></tr>').join('') +
     '</tbody></table>';
 }
-// tooltip title for a series: SOTA runs as "opus 5.5 max · anything goes", others as their label
+// tooltip title for a series: SOTA runs as "opus 5.5 max · L anything goes", others as their label
 const longLabel = se => se.run.solution ? se.run.model.replace('claude-', '').replace(/-(\d)-(\d)$/, ' $1.$2') + ' ' + se.run.level +
   ' · ' + (COND_WORDS[se.run.solution.cond] || se.run.solution.cond) + (se.sub ? ' (' + se.sub + ')' : '') : se.label;
 function showFrTip(g, evt) {
@@ -1319,7 +1320,7 @@ function renderLive(flash, err) {
     flashT = setTimeout(() => el.classList.remove('flash'), 1800);
   }
 }
-const COND = { M: 'M · no web, no crates', R: 'R · web, no crates', L: 'L · anything goes' };
+const COND = COND_WORDS; // tables use the same names
 function renderSota() {
   const rs = RUNS.filter(r => r.solution).sort((a, b) => rank(COND_ORDER, a.solution.cond) - rank(COND_ORDER, b.solution.cond) ||
     rank(SOTA_MODEL_ORDER, a.model) - rank(SOTA_MODEL_ORDER, b.model));

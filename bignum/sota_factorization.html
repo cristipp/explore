@@ -21,10 +21,10 @@ effort, the weakest model on the plan, ran the same three, to probe the threshol
 method at these sizes, and landed within 37–41 digits per prime: from training data memories alone both reached 40, and
 Opus with libraries used the <code>rusqsieve</code> crate for 41. Sonnet 4.6 low only got there with the library: it
 also found <code>rusqsieve</code> (after a web search) and reached 40, but on its own it chose ECM with Pollard's rho
-(web, no crates: 26) or wrote a plain quadratic sieve (no web, no crates: 23), and in both it ran out the hour.
+(R web, no crates: 26) or wrote a plain quadratic sieve (M no web, no crates: 23), and in both it ran out the hour.
 (2) Above the threshold the model matters only by a thin margin: Opus max is at or above Sonnet 5.5 medium in every
-condition, by 0 to 3 digits (anything goes 41 vs 39; web, no crates 40 vs 37; no web, no crates 40 = 40). Below it the
-model matters a lot (23–26 vs 37–41), unless a library closes the gap. The web, no crates condition changed behaviour
+condition, by 0 to 3 digits (L anything goes 41 vs 39; R web, no crates 40 vs 37; M no web, no crates 40 = 40). Below it the
+model matters a lot (23–26 vs 37–41), unless a library closes the gap. The R web, no crates condition changed behaviour
 without being used: the 5.5 runs stopped after about 20 minutes (Sonnet 19, Opus 21), against 38–52 for their other four,
 and scored at or below their no-web twins. What differs above the threshold is the solution each model chose and how long
 it took to write it.</p>
@@ -45,8 +45,8 @@ after the offline build failed it wrote its own big-integer code instead of swit
 rules, so the run counts as is.</p>
 <div id="sotatable"></div>
 <p class="note">All the code, with each model’s prompt and the versions saved while it worked: <a href="code/index.html">code/</a>.</p>
-<p class="note">Isolation: the sessions ran in sibling folders on one machine. Sonnet 4.6 low (web, no crates) looked into
-Opus 5.5's web, no crates folder for its build setup (<code>Cargo.toml</code>, <code>Cargo.lock</code>, the offline crate
+<p class="note">Isolation: the sessions ran in sibling folders on one machine. Sonnet 4.6 low (R web, no crates) looked into
+Opus 5.5's R web, no crates folder for its build setup (<code>Cargo.toml</code>, <code>Cargo.lock</code>, the offline crate
 registry) to get past the same offline <code>num-bigint</code> version problem. It did not open Opus's source code, and
 it built a different algorithm (ECM). Future runs will be isolated.</p>
 
