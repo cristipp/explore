@@ -727,13 +727,16 @@ const frDefaultOn = se => !noProg(se);
 const frIsOn = se => frDefaultOn(se) !== frOff.includes(se.id);
 // SOTA conditions, least to most constrained: anything goes, web no crates, no web no crates
 const COND_ORDER = ['L', 'R', 'M'];
+// strongest first: Opus 5.5, Sonnet 5.5, then Sonnet 4.6
+const SOTA_MODEL_ORDER = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-sonnet-4-6'];
 // readable names for the two no-thinking runs on add + words
 const ARM_TEXT = { nothink: '169 cases (paired with thinking)', 'nothink-grid': 'full grid (5,070 cases, @simonw’s headline)' };
 function frontierSeries() {
   const out = [];
   const condRank = r => rank(COND_ORDER, r.solution ? r.solution.cond : '');
   const rs = RUNS.filter(r => r.frontier && Array.isArray(r.frontier.tested))
-    .sort((a, b) => String(a.model).localeCompare(b.model) || condRank(a) - condRank(b));
+    .sort((a, b) => rank(SOTA_MODEL_ORDER, a.model) - rank(SOTA_MODEL_ORDER, b.model) ||
+      String(a.model).localeCompare(b.model) || condRank(a) - condRank(b));
   rs.forEach(r => {
     const dup = rs.filter(x => x.model === r.model && x.arm === r.arm).length > 1;
     const base = r.model_short + '/' + r.arm + (dup ? '/' + r.source : '');
@@ -1303,7 +1306,7 @@ function renderLive(flash, err) {
 const COND = { M: 'M · no web, no crates', R: 'R · web, no crates', L: 'L · anything goes' };
 function renderSota() {
   const rs = RUNS.filter(r => r.solution).sort((a, b) => rank(COND_ORDER, a.solution.cond) - rank(COND_ORDER, b.solution.cond) ||
-    String(a.model).localeCompare(b.model));
+    rank(SOTA_MODEL_ORDER, a.model) - rank(SOTA_MODEL_ORDER, b.model));
   const el = document.getElementById('sotatable');
   ['sota', 'sotatable'].forEach(id => { document.getElementById(id).hidden = !rs.length; });
   if (!rs.length) { el.innerHTML = ''; return; }
