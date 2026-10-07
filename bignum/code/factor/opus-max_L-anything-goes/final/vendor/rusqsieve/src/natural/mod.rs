@@ -1,0 +1,1879 @@
+//! Fixed-capacity unsigned integer arithmetic.
+
+use core::cmp::Ordering;
+use core::fmt;
+use core::ops::*;
+use core::str::FromStr;
+
+/// A decimal parsing failure.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum ParseNaturalError {
+    /// The input contained no digits.
+    Empty,
+    /// The input contained a byte outside `0` through `9`.
+    InvalidDigit(InvalidDigit),
+    /// The value exceeded the selected fixed capacity.
+    Overflow,
+}
+
+/// Details about an invalid byte in a decimal integer.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct InvalidDigit {
+    index: usize,
+    byte: u8,
+}
+
+impl InvalidDigit {
+    /// Returns the zero-based byte offset.
+    #[must_use]
+    pub const fn index(self) -> usize {
+        self.index
+    }
+
+    /// Returns the invalid byte value.
+    #[must_use]
+    pub const fn byte(self) -> u8 {
+        self.byte
+    }
+}
+
+impl fmt::Display for ParseNaturalError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Empty => f.write_str("empty integer"),
+            Self::InvalidDigit(detail) => {
+                write!(
+                    f,
+                    "invalid decimal byte {:#x} at index {}",
+                    detail.byte, detail.index
+                )
+            }
+            Self::Overflow => f.write_str("integer exceeds Natural capacity"),
+        }
+    }
+}
+impl std::error::Error for ParseNaturalError {}
+
+/// Input bytes do not fit the selected capacity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CapacityError;
+impl fmt::Display for CapacityError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("integer exceeds Natural capacity")
+    }
+}
+impl std::error::Error for CapacityError {}
+
+/// A serialization destination was too small.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub struct BufferTooSmall {
+    required: usize,
+    available: usize,
+}
+impl BufferTooSmall {
+    /// Returns the minimum number of bytes needed.
+    #[must_use]
+    pub const fn required(self) -> usize {
+        self.required
+    }
+
+    /// Returns the number of bytes supplied by the caller.
+    #[must_use]
+    pub const fn available(self) -> usize {
+        self.available
+    }
+}
+impl fmt::Display for BufferTooSmall {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "buffer has {} bytes; {} required",
+            self.available, self.required
+        )
+    }
+}
+impl std::error::Error for BufferTooSmall {}
+
+/// The fixed default limb capacity of [`Natural`]. The SIQS entry points accept
+/// values through 512 bits while the integer type retains 1024 bits of storage.
+pub const PARTS: usize = 16;
+
+/// A fixed-capacity unsigned integer.
+///
+/// `PARTS_64` is the number of 64-bit limbs. Storage is inline and never
+/// allocated. Arithmetic operators wrap modulo `2^(64 * PARTS_64)`; use the
+/// `checked_*` methods when overflow must be rejected.
+///
+/// Arithmetic is variable-time and must not be used for secret values.
+#[repr(transparent)]
+#[derive(Clone, Eq, PartialEq, Hash)]
+pub struct Natural<const PARTS_64: usize = PARTS> {
+    parts: [u64; PARTS_64],
+}
+
+impl<const P: usize> Natural<P> {
+    /// Capacity in bits.
+    pub const BITS: usize = P * 64;
+    /// The additive identity.
+    pub const ZERO: Self = Self { parts: [0; P] };
+    /// The multiplicative identity.
+    pub const ONE: Self = Self::from_u64(1);
+    /// Largest representable value.
+    pub const MAX: Self = Self {
+        parts: [u64::MAX; P],
+    };
+
+    /// Constructs a value from a machine integer.
+    ///
+    /// For the degenerate `Natural<0>`, every input maps to zero.
+    pub const fn from_u64(value: u64) -> Self {
+        let mut parts = [0; P];
+        if P != 0 {
+            parts[0] = value;
+        }
+        Self { parts }
+    }
+    pub(crate) const fn as_parts(&self) -> &[u64; P] {
+        &self.parts
+    }
+    /// The value as a `u64` if it fits (all limbs above the lowest are zero).
+    #[must_use]
+    pub fn to_u64(&self) -> Option<u64> {
+        if P == 0 {
+            return Some(0);
+        }
+        self.parts[1..]
+            .iter()
+            .all(|&x| x == 0)
+            .then_some(self.parts[0])
+    }
+    pub(crate) fn as_mut_parts(&mut self) -> &mut [u64; P] {
+        &mut self.parts
+    }
+    /// Returns whether the value is zero.
+    pub fn is_zero(&self) -> bool {
+        self.parts.iter().all(|&x| x == 0)
+    }
+    /// Returns whether the value is one.
+    pub fn is_one(&self) -> bool {
+        P != 0 && self.parts[0] == 1 && self.parts[1..].iter().all(|&x| x == 0)
+    }
+    /// Returns whether the value is even.
+    pub fn is_even(&self) -> bool {
+        P == 0 || self.parts[0] & 1 == 0
+    }
+    /// Returns whether the value is odd.
+    pub fn is_odd(&self) -> bool {
+        !self.is_even()
+    }
+    /// Returns the number of significant bits, or zero for zero.
+    #[must_use]
+    pub fn bit_len(&self) -> usize {
+        self.parts.iter().rposition(|&x| x != 0).map_or(0, |i| {
+            i * 64 + (64 - self.parts[i].leading_zeros() as usize)
+        })
+    }
+    pub(crate) fn trailing_zeros(&self) -> usize {
+        self.parts
+            .iter()
+            .position(|&x| x != 0)
+            .map_or(Self::BITS, |i| {
+                i * 64 + self.parts[i].trailing_zeros() as usize
+            })
+    }
+    /// Tests a bit, returning `false` when `index` is outside the capacity.
+    #[must_use]
+    pub fn bit(&self, index: usize) -> bool {
+        index < Self::BITS && (self.parts[index / 64] >> (index % 64)) & 1 != 0
+    }
+
+    /// Parses unsigned ASCII decimal digits.
+    ///
+    /// Leading zeroes are accepted. Signs and separators are rejected.
+    pub const fn from_decimal(value: &str) -> Result<Self, ParseNaturalError> {
+        let bytes = value.as_bytes();
+        if bytes.is_empty() {
+            return Err(ParseNaturalError::Empty);
+        }
+        let mut out = Self::ZERO;
+        let mut i = 0;
+        while i < bytes.len() {
+            let b = bytes[i];
+            if b < b'0' || b > b'9' {
+                return Err(ParseNaturalError::InvalidDigit(InvalidDigit {
+                    index: i,
+                    byte: b,
+                }));
+            }
+            let mut carry = (b - b'0') as u128;
+            let mut limb = 0;
+            while limb < P {
+                let v = out.parts[limb] as u128 * 10 + carry;
+                out.parts[limb] = v as u64;
+                carry = v >> 64;
+                limb += 1;
+            }
+            if carry != 0 {
+                return Err(ParseNaturalError::Overflow);
+            }
+            i += 1;
+        }
+        Ok(out)
+    }
+
+    /// Decodes an unsigned big-endian byte string.
+    ///
+    /// Excess leading zero bytes are accepted.
+    pub fn from_be_bytes(bytes: &[u8]) -> Result<Self, CapacityError> {
+        if bytes.len() > P * 8 && bytes[..bytes.len() - P * 8].iter().any(|&x| x != 0) {
+            return Err(CapacityError);
+        }
+        let mut out = Self::ZERO;
+        for (i, &b) in bytes.iter().rev().take(P * 8).enumerate() {
+            out.parts[i / 8] |= (b as u64) << (8 * (i % 8));
+        }
+        Ok(out)
+    }
+    /// Decodes an unsigned little-endian byte string.
+    ///
+    /// Excess trailing zero bytes are accepted.
+    pub fn from_le_bytes(bytes: &[u8]) -> Result<Self, CapacityError> {
+        if bytes.len() > P * 8 && bytes[P * 8..].iter().any(|&x| x != 0) {
+            return Err(CapacityError);
+        }
+        let mut out = Self::ZERO;
+        for (i, &b) in bytes.iter().take(P * 8).enumerate() {
+            out.parts[i / 8] |= (b as u64) << (8 * (i % 8));
+        }
+        Ok(out)
+    }
+    fn byte_len(&self) -> usize {
+        self.bit_len().div_ceil(8)
+    }
+    /// Writes the shortest unsigned big-endian encoding.
+    ///
+    /// Returns the number of bytes written. Zero has an empty encoding.
+    #[must_use = "serialization errors and the written byte count must be handled"]
+    pub fn write_be_bytes(&self, out: &mut [u8]) -> Result<usize, BufferTooSmall> {
+        let n = self.byte_len();
+        if out.len() < n {
+            return Err(BufferTooSmall {
+                required: n,
+                available: out.len(),
+            });
+        }
+        for (i, slot) in out[..n].iter_mut().enumerate() {
+            let j = n - 1 - i;
+            *slot = (self.parts[j / 8] >> (8 * (j % 8))) as u8;
+        }
+        Ok(n)
+    }
+    /// Writes the shortest unsigned little-endian encoding.
+    ///
+    /// Returns the number of bytes written. Zero has an empty encoding.
+    #[must_use = "serialization errors and the written byte count must be handled"]
+    pub fn write_le_bytes(&self, out: &mut [u8]) -> Result<usize, BufferTooSmall> {
+        let n = self.byte_len();
+        if out.len() < n {
+            return Err(BufferTooSmall {
+                required: n,
+                available: out.len(),
+            });
+        }
+        for (i, slot) in out[..n].iter_mut().enumerate() {
+            *slot = (self.parts[i / 8] >> (8 * (i % 8))) as u8;
+        }
+        Ok(n)
+    }
+
+    pub(crate) fn overflowing_add(&self, rhs: &Self) -> (Self, bool) {
+        let mut out = Self::ZERO;
+        let mut carry = 0u128;
+        for i in 0..P {
+            let v = self.parts[i] as u128 + rhs.parts[i] as u128 + carry;
+            out.parts[i] = v as u64;
+            carry = v >> 64;
+        }
+        (out, carry != 0)
+    }
+    pub(crate) fn overflowing_sub(&self, rhs: &Self) -> (Self, bool) {
+        let mut out = Self::ZERO;
+        let mut borrow = false;
+        for i in 0..P {
+            let (a, b1) = self.parts[i].overflowing_sub(rhs.parts[i]);
+            let (v, b2) = a.overflowing_sub(borrow as u64);
+            out.parts[i] = v;
+            borrow = b1 || b2;
+        }
+        (out, borrow)
+    }
+    pub(crate) fn widening_mul(&self, rhs: &Self) -> WideNatural<P> {
+        let mut low = [0u64; P];
+        let mut high = [0u64; P];
+        // Only iterate over significant limbs so arithmetic cost scales with the
+        // operands' actual magnitude, not the fixed capacity `P`.
+        let alen = sig_len(&self.parts);
+        let blen = sig_len(&rhs.parts);
+        for i in 0..alen {
+            let ai = self.parts[i] as u128;
+            if ai == 0 {
+                continue;
+            }
+            let mut carry = 0u128;
+            for j in 0..blen {
+                let k = i + j;
+                let old = if k < P { low[k] } else { high[k - P] };
+                let v = ai * rhs.parts[j] as u128 + old as u128 + carry;
+                if k < P {
+                    low[k] = v as u64;
+                } else {
+                    high[k - P] = v as u64;
+                }
+                carry = v >> 64;
+            }
+            let mut k = i + blen;
+            while carry != 0 && k < 2 * P {
+                let old = if k < P { low[k] } else { high[k - P] };
+                let v = old as u128 + carry;
+                if k < P {
+                    low[k] = v as u64;
+                } else {
+                    high[k - P] = v as u64;
+                }
+                carry = v >> 64;
+                k += 1;
+            }
+        }
+        WideNatural { low, high }
+    }
+    pub(crate) fn widening_square(&self) -> WideNatural<P> {
+        self.widening_mul(self)
+    }
+    pub(crate) fn overflowing_mul(&self, rhs: &Self) -> (Self, bool) {
+        let alen = sig_len(&self.parts);
+        let blen = sig_len(&rhs.parts);
+        let mut out = Self::ZERO;
+        let mut overflow = alen != 0 && blen != 0 && alen + blen - 1 > P;
+        for i in 0..alen.min(P) {
+            let mut carry = 0u128;
+            let count = blen.min(P - i);
+            for j in 0..count {
+                let k = i + j;
+                let value =
+                    self.parts[i] as u128 * rhs.parts[j] as u128 + out.parts[k] as u128 + carry;
+                out.parts[k] = value as u64;
+                carry = value >> 64;
+            }
+            let mut k = i + count;
+            while carry != 0 && k < P {
+                let value = out.parts[k] as u128 + carry;
+                out.parts[k] = value as u64;
+                carry = value >> 64;
+                k += 1;
+            }
+            overflow |= carry != 0;
+        }
+        (out, overflow)
+    }
+    /// Adds two values, returning `None` on capacity overflow.
+    #[must_use]
+    pub fn checked_add(&self, rhs: &Self) -> Option<Self> {
+        let (v, o) = self.overflowing_add(rhs);
+        (!o).then_some(v)
+    }
+    /// Subtracts `rhs`, returning `None` when the result would be negative.
+    #[must_use]
+    pub fn checked_sub(&self, rhs: &Self) -> Option<Self> {
+        let (v, o) = self.overflowing_sub(rhs);
+        (!o).then_some(v)
+    }
+    /// Multiplies two values, returning `None` on capacity overflow.
+    #[must_use]
+    pub fn checked_mul(&self, rhs: &Self) -> Option<Self> {
+        let (v, o) = self.overflowing_mul(rhs);
+        (!o).then_some(v)
+    }
+    pub(crate) fn wrapping_add(&self, rhs: &Self) -> Self {
+        self.overflowing_add(rhs).0
+    }
+    pub(crate) fn wrapping_sub(&self, rhs: &Self) -> Self {
+        self.overflowing_sub(rhs).0
+    }
+    pub(crate) fn wrapping_mul(&self, rhs: &Self) -> Self {
+        self.overflowing_mul(rhs).0
+    }
+
+    /// Divides by `divisor`, returning the quotient and remainder.
+    ///
+    /// Returns `None` when `divisor` is zero.
+    pub fn div_rem(&self, divisor: &Self) -> Option<(Self, Self)> {
+        let dtop = divisor.parts.iter().rposition(|&x| x != 0)?;
+        // Single-limb divisor: use the dedicated fast path.
+        if dtop == 0 {
+            let (q, r) = self.div_rem_u64(divisor.parts[0]).unwrap();
+            return Some((q, Self::from_u64(r)));
+        }
+        let (q, r) = knuth_divmod(&self.parts, &divisor.parts);
+        let mut qn = Self::ZERO;
+        for (slot, &x) in qn.parts.iter_mut().zip(q.as_slice()) {
+            *slot = x;
+        }
+        let mut rn = Self::ZERO;
+        for (slot, &x) in rn.parts.iter_mut().zip(r.as_slice()) {
+            *slot = x;
+        }
+        Some((qn, rn))
+    }
+    /// Remainder modulo a single limb, computed without materializing the quotient. Much cheaper
+    /// than `div_rem_u64().1` in tight trial-division loops, where most divisibility tests fail
+    /// and the quotient would be discarded. Returns `0` for a zero divisor (caller must guard).
+    pub(crate) fn rem_u64(&self, divisor: u64) -> u64 {
+        if divisor == 0 {
+            return 0;
+        }
+        let Some(top) = self.parts.iter().rposition(|&x| x != 0) else {
+            return 0;
+        };
+        // Fast path for divisors < 2^32 (every factor-base prime): process 32 bits at a time so the
+        // running remainder stays < 2^32 and each step is a native u64 divide. The u128 `%` below
+        // lowers to a `__umodti3` libcall on x86/ARM/wasm (none have a 128-bit HW divide), which
+        // dominates the trial-division inner loop; this avoids it.
+        if divisor <= u32::MAX as u64 {
+            let mut r = 0u64;
+            for i in (0..=top).rev() {
+                let limb = self.parts[i];
+                r = ((r << 32) | (limb >> 32)) % divisor;
+                r = ((r << 32) | (limb & 0xffff_ffff)) % divisor;
+            }
+            return r;
+        }
+        let d = divisor as u128;
+        let mut r = 0u128;
+        for i in (0..=top).rev() {
+            r = ((r << 64) | self.parts[i] as u128) % d;
+        }
+        r as u64
+    }
+    pub(crate) fn div_rem_u64(&self, divisor: u64) -> Option<(Self, u64)> {
+        if divisor == 0 {
+            return None;
+        }
+        let mut q = Self::ZERO;
+        let Some(top) = self.parts.iter().rposition(|&x| x != 0) else {
+            return Some((q, 0));
+        };
+        // Fast path for divisors < 2^32 (see `rem_u64`): 32-bit-at-a-time division keeps every
+        // step a native u64 divide, avoiding the u128 div/rem `__udivti3`/`__umodti3` libcalls.
+        // Each 64-bit limb yields two 32-bit quotient pieces; both are < 2^32 because the incoming
+        // remainder `r < divisor`, so `(qhi << 32) | qlo` reconstructs the limb exactly.
+        if divisor <= u32::MAX as u64 {
+            let mut r = 0u64;
+            for i in (0..=top).rev() {
+                let limb = self.parts[i];
+                let hi = (r << 32) | (limb >> 32);
+                let qhi = hi / divisor;
+                r = hi - qhi * divisor;
+                let lo = (r << 32) | (limb & 0xffff_ffff);
+                let qlo = lo / divisor;
+                r = lo - qlo * divisor;
+                q.parts[i] = (qhi << 32) | qlo;
+            }
+            return Some((q, r));
+        }
+        let d = divisor as u128;
+        let mut r = 0u128;
+        for i in (0..=top).rev() {
+            let v = (r << 64) | self.parts[i] as u128;
+            let qi = (v / d) as u64;
+            r = v - qi as u128 * d;
+            q.parts[i] = qi;
+        }
+        Some((q, r as u64))
+    }
+    /// Binary (Stein) GCD: shifts and subtraction only, no division.
+    ///
+    /// Every step works over the operands' *significant* limbs rather than the full capacity, and
+    /// the significant length only shrinks, so the cost follows the values rather than `P`. Written
+    /// over whole `Natural`s this cost the same at 128 bits as at 512 — the batched gcd in
+    /// Pollard-Brent was 23 µs on an eight-limb modulus, several times a subtract-and-shift loop's
+    /// worth of work, because each of roughly a thousand iterations touched all sixteen limbs.
+    /// The tail, where both operands have shrunk into one word, finishes in machine arithmetic.
+    #[must_use]
+    pub fn gcd(&self, rhs: &Self) -> Self {
+        if self.is_zero() {
+            return rhs.clone();
+        }
+        if rhs.is_zero() {
+            return self.clone();
+        }
+        let mut a = self.parts;
+        let mut b = rhs.parts;
+        let mut alen = sig_len(&a);
+        let mut blen = sig_len(&b);
+
+        // Powers of two divide the result exactly once, so they come out up front and go back on
+        // at the end.
+        let common = trailing_zero_bits(&a, alen).min(trailing_zero_bits(&b, blen));
+        let odd_shift = trailing_zero_bits(&a, alen);
+        shift_right_prefix(&mut a, &mut alen, odd_shift);
+
+        loop {
+            let odd_shift = trailing_zero_bits(&b, blen);
+            shift_right_prefix(&mut b, &mut blen, odd_shift);
+            if compare_prefix(&a, alen, &b, blen) == Ordering::Greater {
+                core::mem::swap(&mut a, &mut b);
+                core::mem::swap(&mut alen, &mut blen);
+            }
+            // `a <= b` after the swap, so this cannot underflow.
+            subtract_prefix(&mut b, blen, &a, alen);
+            blen = sig_len(&b[..blen]);
+            if blen == 0 {
+                break;
+            }
+            if alen == 1 && blen == 1 {
+                a[0] = gcd_word(a[0], b[0]);
+                alen = 1;
+                break;
+            }
+        }
+
+        let mut result = Self::ZERO;
+        result.parts[..alen].copy_from_slice(&a[..alen]);
+        result << common
+    }
+    pub(crate) fn sqrt_rem(&self) -> (Self, Self) {
+        if self.is_zero() {
+            return (Self::ZERO, Self::ZERO);
+        }
+        let mut x = Self::ONE << self.bit_len().div_ceil(2);
+        if x.is_zero() {
+            x = Self::MAX;
+        }
+        loop {
+            let q = self.div_rem(&x).unwrap().0;
+            // Newton maintains x <= 2^(BITS/2) and q <= self/x, so
+            // x + q <= 2^(BITS/2+1), which fits for every nondegenerate width.
+            debug_assert!(x.checked_add(&q).is_some(), "square-root iterate fits");
+            let sum = x.wrapping_add(&q);
+            let next = sum >> 1usize;
+            if next >= x {
+                debug_assert!(x.checked_mul(&x).is_some(), "floor square root fits");
+                let sq = x.wrapping_mul(&x);
+                debug_assert!(self.checked_sub(&sq).is_some(), "floor square is <= input");
+                return (x, self.wrapping_sub(&sq));
+            }
+            x = next;
+        }
+    }
+    pub(crate) fn floor_sqrt(&self) -> Self {
+        self.sqrt_rem().0
+    }
+    pub(crate) fn ceil_sqrt(&self) -> Self {
+        let (s, r) = self.sqrt_rem();
+        if r.is_zero() {
+            s
+        } else {
+            s.checked_add(&Self::ONE).unwrap()
+        }
+    }
+    pub(crate) fn is_square(&self) -> bool {
+        self.sqrt_rem().1.is_zero()
+    }
+    pub(crate) fn checked_pow_u32(&self, mut exponent: u32) -> Option<Self> {
+        let mut a = self.clone();
+        let mut out = Self::ONE;
+        while exponent != 0 {
+            if exponent & 1 != 0 {
+                out = out.checked_mul(&a)?;
+            }
+            exponent >>= 1;
+            if exponent != 0 {
+                a = a.checked_mul(&a)?;
+            }
+        }
+        Some(out)
+    }
+    pub(crate) fn perfect_power(&self) -> Option<(Self, u32)> {
+        if self < &Self::from_u64(4) {
+            return None;
+        }
+        let root = self.floor_sqrt();
+        if root.checked_mul(&root).as_ref() == Some(self) {
+            return Some((root, 2));
+        }
+        let bits = self.bit_len() as u32;
+        for e in 3..=bits {
+            if !crate::u64math::is_prime(e as u64) {
+                continue;
+            }
+            let mut lo = Self::ONE;
+            let mut hi = Self::ONE << self.bit_len().div_ceil(e as usize);
+            hi = hi.checked_add(&Self::ONE).unwrap_or(Self::MAX);
+            while lo < hi {
+                let sum = lo.checked_add(&hi)?;
+                let mid = (sum + Self::ONE) >> 1usize;
+                match mid.checked_pow_u32(e) {
+                    Some(v) if v <= *self => lo = mid,
+                    _ => hi = mid.wrapping_sub(&Self::ONE),
+                }
+            }
+            if lo.checked_pow_u32(e).as_ref() == Some(self) {
+                return Some((lo, e));
+            }
+        }
+        None
+    }
+
+    pub(crate) fn add_mod(&self, rhs: &Self, m: &Self) -> Self {
+        debug_assert!(self < m && rhs < m);
+        let threshold = m.wrapping_sub(rhs);
+        if self >= &threshold {
+            self.wrapping_sub(&threshold)
+        } else {
+            self.wrapping_add(rhs)
+        }
+    }
+    pub(crate) fn mul_mod(&self, rhs: &Self, m: &Self) -> Self {
+        debug_assert!(self < m && rhs < m, "mul_mod operands must be reduced");
+        self.widening_mul(rhs).rem_natural(m)
+    }
+    pub(crate) fn pow_mod(&self, e: &Self, m: &Self) -> Self {
+        let mut a = self.div_rem(m).unwrap().1;
+        let mut e = e.clone();
+        let mut out = Self::ONE.div_rem(m).unwrap().1;
+        while !e.is_zero() {
+            if e.is_odd() {
+                out = out.mul_mod(&a, m)
+            }
+            e >>= 1usize;
+            if !e.is_zero() {
+                a = a.mul_mod(&a, m)
+            }
+        }
+        out
+    }
+    pub(crate) fn mod_u64(&self, m: u64) -> u64 {
+        self.rem_u64(m)
+    }
+}
+
+mod montgomery;
+#[cfg(any(unix, windows, target_arch = "wasm32", test))]
+pub(crate) use montgomery::{LIMB_CAP, Limb, MontgomeryContext};
+
+// Prime generation is native-only: it is the one part of this type that needs entropy, and the
+// Wasm ABI declares no import to get it from.
+#[cfg(any(unix, windows))]
+mod prime;
+#[cfg(any(unix, windows))]
+pub use prime::PrimeGenError;
+
+/// Trailing zero bits of the value held in `limbs[..len]`, which must be nonzero.
+#[inline]
+fn trailing_zero_bits(limbs: &[u64], len: usize) -> usize {
+    for (index, &word) in limbs[..len].iter().enumerate() {
+        if word != 0 {
+            return index * 64 + word.trailing_zeros() as usize;
+        }
+    }
+    0
+}
+
+/// Shifts `limbs[..len]` right by `bits`, updating the significant length.
+#[inline]
+fn shift_right_prefix(limbs: &mut [u64], len: &mut usize, bits: usize) {
+    if bits == 0 {
+        return;
+    }
+    let words = bits / 64;
+    if words > 0 {
+        let remaining = len.saturating_sub(words);
+        limbs.copy_within(words..*len, 0);
+        limbs[remaining..*len].fill(0);
+        *len = remaining;
+    }
+    let rest = bits % 64;
+    if rest > 0 {
+        let mut carry = 0u64;
+        for index in (0..*len).rev() {
+            let word = limbs[index];
+            limbs[index] = (word >> rest) | carry;
+            carry = word << (64 - rest);
+        }
+    }
+    while *len > 0 && limbs[*len - 1] == 0 {
+        *len -= 1;
+    }
+}
+
+/// Compares the values held in two limb prefixes.
+#[inline]
+fn compare_prefix(a: &[u64], alen: usize, b: &[u64], blen: usize) -> Ordering {
+    if alen != blen {
+        return alen.cmp(&blen);
+    }
+    for index in (0..alen).rev() {
+        if a[index] != b[index] {
+            return a[index].cmp(&b[index]);
+        }
+    }
+    Ordering::Equal
+}
+
+/// `b[..blen] -= a[..alen]`, which the caller must know does not underflow.
+#[inline]
+fn subtract_prefix(b: &mut [u64], blen: usize, a: &[u64], alen: usize) {
+    let mut borrow = false;
+    for index in 0..alen {
+        let (difference, first) = b[index].overflowing_sub(a[index]);
+        let (difference, second) = difference.overflowing_sub(u64::from(borrow));
+        b[index] = difference;
+        borrow = first || second;
+    }
+    let mut index = alen;
+    while borrow && index < blen {
+        let (difference, underflow) = b[index].overflowing_sub(1);
+        b[index] = difference;
+        borrow = underflow;
+        index += 1;
+    }
+    debug_assert!(!borrow, "gcd subtraction underflowed");
+}
+
+/// Euclid on machine words, for the tail of [`Natural::gcd`] once both operands fit in one.
+#[inline]
+fn gcd_word(mut a: u64, mut b: u64) -> u64 {
+    while b != 0 {
+        let remainder = a % b;
+        a = b;
+        b = remainder;
+    }
+    a
+}
+
+/// Number of significant (nonzero through) limbs in a little-endian slice.
+#[inline]
+fn sig_len(limbs: &[u64]) -> usize {
+    limbs.iter().rposition(|&x| x != 0).map_or(0, |i| i + 1)
+}
+
+/// Limb capacity of [`LimbBuffer`]'s inline storage: enough for `2 * PARTS + 1`, the widest
+/// normalized dividend Knuth's Algorithm D needs. Written from a literal rather than from `PARTS`
+/// because an array length computed from a const generic parameter requires `generic_const_exprs`,
+/// which is unstable, and this crate builds on stable.
+const MAX_DIV_LIMBS: usize = 2 * 16 + 1;
+
+/// Working storage for one division. Deliberately large by value: the whole point is to keep the
+/// four buffers Knuth's Algorithm D needs off the heap, since it is the workhorse of every
+/// multi-limb division. `Heap` covers the case where a caller instantiates `Natural<P>` with
+/// `P > 16`, which no shipped configuration does.
+#[allow(clippy::large_enum_variant)]
+enum LimbBuffer {
+    Stack {
+        limbs: [u64; MAX_DIV_LIMBS],
+        len: usize,
+    },
+    Heap(Vec<u64>),
+}
+impl LimbBuffer {
+    fn zeroed(len: usize) -> Self {
+        if len <= MAX_DIV_LIMBS {
+            Self::Stack {
+                limbs: [0; MAX_DIV_LIMBS],
+                len,
+            }
+        } else {
+            Self::Heap(vec![0; len])
+        }
+    }
+    fn from_slice(values: &[u64]) -> Self {
+        let mut buffer = Self::zeroed(values.len());
+        buffer.as_mut_slice().copy_from_slice(values);
+        buffer
+    }
+    fn as_slice(&self) -> &[u64] {
+        match self {
+            Self::Stack { limbs, len } => &limbs[..*len],
+            Self::Heap(limbs) => limbs,
+        }
+    }
+    fn as_mut_slice(&mut self) -> &mut [u64] {
+        match self {
+            Self::Stack { limbs, len } => &mut limbs[..*len],
+            Self::Heap(limbs) => limbs,
+        }
+    }
+}
+
+/// Little-endian schoolbook long division (Knuth TAOCP Alg. D) on limb slices.
+/// Returns `(quotient, remainder)` as trimmed little-endian limb vectors.
+/// `den` must be nonzero. This is the shared normalized-long-division primitive
+/// used by both `Natural::div_rem` and wide-product reduction (SPEC §5).
+fn knuth_divmod(num: &[u64], den: &[u64]) -> (LimbBuffer, LimbBuffer) {
+    const LOW: u128 = 0xffff_ffff_ffff_ffff;
+    let num_len = sig_len(num);
+    let n = sig_len(den);
+    debug_assert!(n >= 1, "division by zero");
+    if num_len < n {
+        return (
+            LimbBuffer::from_slice(&[0]),
+            LimbBuffer::from_slice(&num[..num_len.max(1)]),
+        );
+    }
+    // Single-limb divisor: straight long division.
+    if n == 1 {
+        let d = den[0] as u128;
+        let mut q = LimbBuffer::zeroed(num_len);
+        let q = q.as_mut_slice();
+        let mut r = 0u128;
+        for i in (0..num_len).rev() {
+            let cur = (r << 64) | num[i] as u128;
+            let qi = (cur / d) as u64;
+            r = cur - qi as u128 * d;
+            q[i] = qi;
+        }
+        return (
+            LimbBuffer::from_slice(q),
+            LimbBuffer::from_slice(&[r as u64]),
+        );
+    }
+    let m = num_len - n;
+    let shift = den[n - 1].leading_zeros();
+    // Normalize divisor and dividend so the divisor's top bit is set.
+    let mut vn = LimbBuffer::zeroed(n);
+    let vn = vn.as_mut_slice();
+    if shift == 0 {
+        vn.copy_from_slice(&den[..n]);
+    } else {
+        for i in (1..n).rev() {
+            vn[i] = (den[i] << shift) | (den[i - 1] >> (64 - shift));
+        }
+        vn[0] = den[0] << shift;
+    }
+    let mut un = LimbBuffer::zeroed(num_len + 1);
+    let un = un.as_mut_slice();
+    if shift == 0 {
+        un[..num_len].copy_from_slice(&num[..num_len]);
+    } else {
+        un[num_len] = num[num_len - 1] >> (64 - shift);
+        for i in (1..num_len).rev() {
+            un[i] = (num[i] << shift) | (num[i - 1] >> (64 - shift));
+        }
+        un[0] = num[0] << shift;
+    }
+    let mut q = LimbBuffer::zeroed(m + 1);
+    let q = q.as_mut_slice();
+    let base = 1u128 << 64;
+    for j in (0..=m).rev() {
+        let top = ((un[j + n] as u128) << 64) | un[j + n - 1] as u128;
+        let mut qhat = top / vn[n - 1] as u128;
+        let mut rhat = top - qhat * vn[n - 1] as u128;
+        while qhat >= base || qhat * vn[n - 2] as u128 > (rhat << 64) | un[j + n - 2] as u128 {
+            qhat -= 1;
+            rhat += vn[n - 1] as u128;
+            if rhat >= base {
+                break;
+            }
+        }
+        // Multiply and subtract qhat*divisor from the current window.
+        let mut carry: u128 = 0;
+        let mut borrow: i128 = 0;
+        for i in 0..n {
+            let p = qhat * vn[i] as u128 + carry;
+            carry = p >> 64;
+            let t = un[j + i] as i128 - borrow - (p & LOW) as i128;
+            un[j + i] = t as u64;
+            borrow = -(t >> 64);
+        }
+        let t = un[j + n] as i128 - carry as i128 - borrow;
+        un[j + n] = t as u64;
+        let mut qj = qhat as u64;
+        if t < 0 {
+            // qhat was one too large: add the divisor back.
+            qj -= 1;
+            let mut c: u128 = 0;
+            for i in 0..n {
+                let s = un[j + i] as u128 + vn[i] as u128 + c;
+                un[j + i] = s as u64;
+                c = s >> 64;
+            }
+            un[j + n] = (un[j + n] as u128 + c) as u64;
+        }
+        q[j] = qj;
+    }
+    // Denormalize the remainder.
+    let mut rem = LimbBuffer::zeroed(n);
+    let rem = rem.as_mut_slice();
+    if shift == 0 {
+        rem.copy_from_slice(&un[..n]);
+    } else {
+        for i in 0..n - 1 {
+            rem[i] = (un[i] >> shift) | (un[i + 1] << (64 - shift));
+        }
+        rem[n - 1] = un[n - 1] >> shift;
+    }
+    (LimbBuffer::from_slice(q), LimbBuffer::from_slice(rem))
+}
+
+impl<const P: usize> Ord for Natural<P> {
+    fn cmp(&self, rhs: &Self) -> Ordering {
+        for i in (0..P).rev() {
+            match self.parts[i].cmp(&rhs.parts[i]) {
+                Ordering::Equal => {}
+                x => return x,
+            }
+        }
+        Ordering::Equal
+    }
+}
+impl<const P: usize> PartialOrd for Natural<P> {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        Some(self.cmp(rhs))
+    }
+}
+impl<const P: usize> FromStr for Natural<P> {
+    type Err = ParseNaturalError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_decimal(s)
+    }
+}
+impl<const P: usize> Default for Natural<P> {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+impl<const P: usize> From<u64> for Natural<P> {
+    fn from(v: u64) -> Self {
+        Self::from_u64(v)
+    }
+}
+
+impl<const P: usize> TryFrom<Natural<P>> for u64 {
+    type Error = CapacityError;
+
+    fn try_from(value: Natural<P>) -> Result<Self, Self::Error> {
+        value.to_u64().ok_or(CapacityError)
+    }
+}
+
+impl<const P: usize> TryFrom<&Natural<P>> for u64 {
+    type Error = CapacityError;
+
+    fn try_from(value: &Natural<P>) -> Result<Self, Self::Error> {
+        value.to_u64().ok_or(CapacityError)
+    }
+}
+
+impl<const P: usize> fmt::Display for Natural<P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_zero() {
+            return f.write_str("0");
+        }
+        let mut n = self.clone();
+        let mut chunks = Vec::new();
+        while !n.is_zero() {
+            let (q, r) = n.div_rem_u64(10_000_000_000_000_000_000).unwrap();
+            chunks.push(r);
+            n = q;
+        }
+        write!(f, "{}", chunks.pop().unwrap())?;
+        while let Some(c) = chunks.pop() {
+            write!(f, "{c:019}")?
+        }
+        Ok(())
+    }
+}
+impl<const P: usize> fmt::LowerHex for Natural<P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_zero() {
+            return f.write_str("0");
+        }
+        let i = self.parts.iter().rposition(|&x| x != 0).unwrap();
+        write!(f, "{:x}", self.parts[i])?;
+        for x in self.parts[..i].iter().rev() {
+            write!(f, "{x:016x}")?
+        }
+        Ok(())
+    }
+}
+impl<const P: usize> fmt::UpperHex for Natural<P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_zero() {
+            return f.write_str("0");
+        }
+        let i = self.parts.iter().rposition(|&x| x != 0).unwrap();
+        write!(f, "{:X}", self.parts[i])?;
+        for x in self.parts[..i].iter().rev() {
+            write!(f, "{x:016X}")?
+        }
+        Ok(())
+    }
+}
+impl<const P: usize> fmt::Debug for Natural<P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Natural<{P}>(0x{:x})", self)
+    }
+}
+
+macro_rules! binop {
+    ($trait:ident,$method:ident,$func:ident) => {
+        impl<'a, 'b, const P: usize> $trait<&'b Natural<P>> for &'a Natural<P> {
+            type Output = Natural<P>;
+            fn $method(self, rhs: &'b Natural<P>) -> Self::Output {
+                self.$func(rhs)
+            }
+        }
+        impl<const P: usize> $trait for Natural<P> {
+            type Output = Self;
+            fn $method(self, rhs: Self) -> Self {
+                (&self).$method(&rhs)
+            }
+        }
+    };
+}
+binop!(Add, add, wrapping_add);
+binop!(Sub, sub, wrapping_sub);
+binop!(Mul, mul, wrapping_mul);
+impl<const P: usize> Add<&Natural<P>> for Natural<P> {
+    type Output = Self;
+    fn add(self, rhs: &Self) -> Self {
+        (&self).add(rhs)
+    }
+}
+impl<const P: usize> Sub<&Natural<P>> for Natural<P> {
+    type Output = Self;
+    fn sub(self, rhs: &Self) -> Self {
+        (&self).sub(rhs)
+    }
+}
+impl<const P: usize> Mul<&Natural<P>> for Natural<P> {
+    type Output = Self;
+    fn mul(self, rhs: &Self) -> Self {
+        (&self).mul(rhs)
+    }
+}
+impl<const P: usize> Add<Natural<P>> for &Natural<P> {
+    type Output = Natural<P>;
+    fn add(self, rhs: Natural<P>) -> Natural<P> {
+        self.add(&rhs)
+    }
+}
+impl<const P: usize> Sub<Natural<P>> for &Natural<P> {
+    type Output = Natural<P>;
+    fn sub(self, rhs: Natural<P>) -> Natural<P> {
+        self.sub(&rhs)
+    }
+}
+impl<const P: usize> Mul<Natural<P>> for &Natural<P> {
+    type Output = Natural<P>;
+    fn mul(self, rhs: Natural<P>) -> Natural<P> {
+        self.mul(&rhs)
+    }
+}
+/// # Panics
+///
+/// Panics when the divisor is zero.
+impl<const P: usize> Div for Natural<P> {
+    type Output = Self;
+    fn div(self, rhs: Self) -> Self {
+        self.div_rem(&rhs).expect("division by zero").0
+    }
+}
+/// # Panics
+///
+/// Panics when the divisor is zero.
+impl<const P: usize> Rem for Natural<P> {
+    type Output = Self;
+    fn rem(self, rhs: Self) -> Self {
+        self.div_rem(&rhs).expect("division by zero").1
+    }
+}
+/// # Panics
+///
+/// Panics when the divisor is zero.
+impl<const P: usize> Div<&Natural<P>> for &Natural<P> {
+    type Output = Natural<P>;
+    fn div(self, rhs: &Natural<P>) -> Natural<P> {
+        self.div_rem(rhs).expect("division by zero").0
+    }
+}
+/// # Panics
+///
+/// Panics when the divisor is zero.
+impl<const P: usize> Rem<&Natural<P>> for &Natural<P> {
+    type Output = Natural<P>;
+    fn rem(self, rhs: &Natural<P>) -> Natural<P> {
+        self.div_rem(rhs).expect("division by zero").1
+    }
+}
+macro_rules! assign {($trait:ident,$method:ident,$op:tt)=>{impl<const P:usize>$trait<&Natural<P>> for Natural<P>{fn $method(&mut self,rhs:&Self){*self=&*self $op rhs;}}};}
+assign!(AddAssign,add_assign,+);
+assign!(SubAssign,sub_assign,-);
+assign!(MulAssign,mul_assign,*);
+impl<const P: usize> AddAssign for Natural<P> {
+    fn add_assign(&mut self, rhs: Self) {
+        *self += &rhs
+    }
+}
+impl<const P: usize> SubAssign for Natural<P> {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self -= &rhs
+    }
+}
+impl<const P: usize> MulAssign for Natural<P> {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self *= &rhs
+    }
+}
+/// # Panics
+///
+/// Panics when the divisor is zero.
+impl<const P: usize> DivAssign<&Self> for Natural<P> {
+    fn div_assign(&mut self, r: &Self) {
+        *self = self.clone() / r.clone()
+    }
+}
+/// # Panics
+///
+/// Panics when the divisor is zero.
+impl<const P: usize> RemAssign<&Self> for Natural<P> {
+    fn rem_assign(&mut self, r: &Self) {
+        *self = self.clone() % r.clone()
+    }
+}
+/// # Panics
+///
+/// Panics when the divisor is zero.
+impl<const P: usize> DivAssign for Natural<P> {
+    fn div_assign(&mut self, rhs: Self) {
+        *self /= &rhs
+    }
+}
+/// # Panics
+///
+/// Panics when the divisor is zero.
+impl<const P: usize> RemAssign for Natural<P> {
+    fn rem_assign(&mut self, rhs: Self) {
+        *self %= &rhs
+    }
+}
+
+impl<const P: usize> BitAnd for Natural<P> {
+    type Output = Self;
+    fn bitand(mut self, rhs: Self) -> Self {
+        for i in 0..P {
+            self.parts[i] &= rhs.parts[i]
+        }
+        self
+    }
+}
+impl<const P: usize> BitOr for Natural<P> {
+    type Output = Self;
+    fn bitor(mut self, rhs: Self) -> Self {
+        for i in 0..P {
+            self.parts[i] |= rhs.parts[i]
+        }
+        self
+    }
+}
+impl<const P: usize> BitXor for Natural<P> {
+    type Output = Self;
+    fn bitxor(mut self, rhs: Self) -> Self {
+        for i in 0..P {
+            self.parts[i] ^= rhs.parts[i]
+        }
+        self
+    }
+}
+impl<const P: usize> BitAnd<&Natural<P>> for &Natural<P> {
+    type Output = Natural<P>;
+    fn bitand(self, r: &Natural<P>) -> Natural<P> {
+        self.clone() & r.clone()
+    }
+}
+impl<const P: usize> BitOr<&Natural<P>> for &Natural<P> {
+    type Output = Natural<P>;
+    fn bitor(self, r: &Natural<P>) -> Natural<P> {
+        self.clone() | r.clone()
+    }
+}
+impl<const P: usize> BitXor<&Natural<P>> for &Natural<P> {
+    type Output = Natural<P>;
+    fn bitxor(self, r: &Natural<P>) -> Natural<P> {
+        self.clone() ^ r.clone()
+    }
+}
+impl<const P: usize> BitAndAssign<&Natural<P>> for Natural<P> {
+    fn bitand_assign(&mut self, r: &Natural<P>) {
+        for i in 0..P {
+            self.parts[i] &= r.parts[i]
+        }
+    }
+}
+impl<const P: usize> BitOrAssign<&Natural<P>> for Natural<P> {
+    fn bitor_assign(&mut self, r: &Natural<P>) {
+        for i in 0..P {
+            self.parts[i] |= r.parts[i]
+        }
+    }
+}
+impl<const P: usize> BitXorAssign<&Natural<P>> for Natural<P> {
+    fn bitxor_assign(&mut self, r: &Natural<P>) {
+        for i in 0..P {
+            self.parts[i] ^= r.parts[i]
+        }
+    }
+}
+impl<const P: usize> BitAndAssign for Natural<P> {
+    fn bitand_assign(&mut self, r: Self) {
+        *self &= &r
+    }
+}
+impl<const P: usize> BitOrAssign for Natural<P> {
+    fn bitor_assign(&mut self, r: Self) {
+        *self |= &r
+    }
+}
+impl<const P: usize> BitXorAssign for Natural<P> {
+    fn bitxor_assign(&mut self, r: Self) {
+        *self ^= &r
+    }
+}
+impl<const P: usize> Not for Natural<P> {
+    type Output = Self;
+    fn not(mut self) -> Self {
+        for x in &mut self.parts {
+            *x = !*x
+        }
+        self
+    }
+}
+impl<const P: usize> Shl<usize> for Natural<P> {
+    type Output = Self;
+    fn shl(self, s: usize) -> Self {
+        if s >= Self::BITS {
+            return Self::ZERO;
+        }
+        let mut out = Self::ZERO;
+        let w = s / 64;
+        let b = s % 64;
+        for i in w..P {
+            out.parts[i] = self.parts[i - w] << b;
+            if b != 0 && i > w {
+                out.parts[i] |= self.parts[i - w - 1] >> (64 - b)
+            }
+        }
+        out
+    }
+}
+impl<const P: usize> Shr<usize> for Natural<P> {
+    type Output = Self;
+    fn shr(self, s: usize) -> Self {
+        if s >= Self::BITS {
+            return Self::ZERO;
+        }
+        let mut out = Self::ZERO;
+        let w = s / 64;
+        let b = s % 64;
+        for i in 0..P - w {
+            out.parts[i] = self.parts[i + w] >> b;
+            if b != 0 && i + w + 1 < P {
+                out.parts[i] |= self.parts[i + w + 1] << (64 - b)
+            }
+        }
+        out
+    }
+}
+impl<const P: usize> ShlAssign<usize> for Natural<P> {
+    fn shl_assign(&mut self, s: usize) {
+        *self = self.clone() << s
+    }
+}
+impl<const P: usize> ShrAssign<usize> for Natural<P> {
+    fn shr_assign(&mut self, s: usize) {
+        *self = self.clone() >> s
+    }
+}
+
+/// The exact 2P-limb result of a multiplication.
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct WideNatural<const P: usize> {
+    low: [u64; P],
+    high: [u64; P],
+}
+impl<const P: usize> WideNatural<P> {
+    pub fn low(&self) -> Natural<P> {
+        Natural { parts: self.low }
+    }
+    pub fn high(&self) -> Natural<P> {
+        Natural { parts: self.high }
+    }
+    pub fn overflowing_narrow(self) -> (Natural<P>, bool) {
+        (
+            Natural { parts: self.low },
+            self.high.iter().any(|&x| x != 0),
+        )
+    }
+    /// Reduce this 2P-limb value modulo `m` (`m` must be nonzero).
+    pub(crate) fn rem_natural(&self, m: &Natural<P>) -> Natural<P> {
+        // Fast single-limb modulus.
+        if m.parts[1..].iter().all(|&x| x == 0) {
+            let d = m.parts[0] as u128;
+            let mut r = 0u128;
+            // Most-significant limb first: high limbs (descending) then low limbs.
+            for limb in self.low.iter().chain(self.high.iter()).rev() {
+                r = ((r << 64) | *limb as u128) % d;
+            }
+            return Natural::from_u64(r as u64);
+        }
+        let (_, r) = if P <= 16 {
+            let mut wide = [0u64; 2 * 16];
+            wide[..P].copy_from_slice(&self.low);
+            wide[P..2 * P].copy_from_slice(&self.high);
+            knuth_divmod(&wide[..2 * P], &m.parts)
+        } else {
+            let mut wide = Vec::with_capacity(2 * P);
+            wide.extend_from_slice(&self.low);
+            wide.extend_from_slice(&self.high);
+            knuth_divmod(&wide, &m.parts)
+        };
+        let mut rn = Natural::ZERO;
+        for (slot, &x) in rn.parts.iter_mut().zip(r.as_slice()) {
+            *slot = x;
+        }
+        rn
+    }
+}
+
+pub fn jacobi_u64(mut a: u64, mut n: u64) -> i8 {
+    if n == 0 || n & 1 == 0 {
+        return 0;
+    }
+    a %= n;
+    let mut s = 1;
+    while a != 0 {
+        while a & 1 == 0 {
+            a >>= 1;
+            let r = n & 7;
+            if r == 3 || r == 5 {
+                s = -s
+            }
+        }
+        core::mem::swap(&mut a, &mut n);
+        if a & 3 == 3 && n & 3 == 3 {
+            s = -s
+        }
+        a %= n
+    }
+    if n == 1 { s } else { 0 }
+}
+/// The Legendre symbol `(n/p)` for an odd prime `p`.
+///
+/// The body is the Jacobi symbol, which coincides with Legendre exactly when the modulus is an odd
+/// prime — so the name is only accurate under that precondition, which every caller (factor-base
+/// construction) satisfies. For a composite modulus this returns the Jacobi symbol, which does not
+/// decide quadratic residuacity. `p == 2` is special-cased to `n & 1`, for which the Legendre symbol
+/// is undefined; the factor-base builder relies on that convention to admit 2.
+pub fn legendre_u32(n: u32, p: u32) -> i8 {
+    debug_assert!(
+        p == 2 || p & 1 == 1,
+        "Legendre requires an odd prime modulus"
+    );
+    if p == 2 {
+        return if n & 1 == 0 { 0 } else { 1 };
+    }
+    jacobi_u64((n % p) as u64, p as u64)
+}
+/// A square root of `n` modulo the odd prime `p`, or `None` if `n` is a non-residue.
+///
+/// Roughly half the factor base has `p ≡ 3 (mod 4)`, and those take the `n^((p+1)/4)` closed form
+/// rather than the loop below — so the majority of calls never execute Tonelli-Shanks proper. This
+/// is standard practice, noted because the name otherwise sets the wrong cost expectation. Which of
+/// the two roots is returned is unspecified.
+pub fn tonelli_shanks_u32(n: u32, p: u32) -> Option<u32> {
+    if p == 2 {
+        return Some(n & 1);
+    }
+    let n = n % p;
+    if n == 0 {
+        return Some(0);
+    }
+    if legendre_u32(n, p) != 1 {
+        return None;
+    }
+    if p & 3 == 3 {
+        return Some(crate::u64math::pow_mod(n as u64, ((p + 1) / 4) as u64, p as u64) as u32);
+    }
+    let mut q = p - 1;
+    let mut s = 0;
+    while q & 1 == 0 {
+        q >>= 1;
+        s += 1
+    }
+    let mut z = 2;
+    while legendre_u32(z, p) != -1 {
+        z += 1
+    }
+    let mut c = crate::u64math::pow_mod(z as u64, q as u64, p as u64);
+    let mut x = crate::u64math::pow_mod(n as u64, q.div_ceil(2) as u64, p as u64);
+    let mut t = crate::u64math::pow_mod(n as u64, q as u64, p as u64);
+    let mut m = s;
+    while t != 1 {
+        let mut i = 1;
+        let mut tt = t * t % p as u64;
+        while tt != 1 {
+            tt = tt * tt % p as u64;
+            i += 1;
+            if i >= m {
+                return None;
+            }
+        }
+        let b = crate::u64math::pow_mod(c, 1u64 << (m - i - 1), p as u64);
+        x = x * b % p as u64;
+        t = t * b % p as u64 * b % p as u64;
+        c = b * b % p as u64;
+        m = i
+    }
+    Some(x as u32)
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn parse_arithmetic() {
+        let n: Natural<2> = "340282366920938463463374607431768211455".parse().unwrap();
+        assert_eq!(n, Natural::MAX);
+        assert_eq!(n.to_string(), "340282366920938463463374607431768211455");
+        assert_eq!(
+            Natural::<1>::from_decimal("18446744073709551616"),
+            Err(ParseNaturalError::Overflow)
+        );
+    }
+    #[test]
+    fn div_sqrt() {
+        let n = Natural::<2>::from_u64(123456789);
+        let d = Natural::from_u64(1234);
+        let (q, r) = n.div_rem(&d).unwrap();
+        assert_eq!(q.to_string(), "100046");
+        assert_eq!(r.to_string(), "25");
+        assert_eq!(n.floor_sqrt(), Natural::from_u64(11111));
+    }
+    #[test]
+    fn modular() {
+        let m = Natural::<2>::from_u64(97);
+        assert_eq!(
+            Natural::from_u64(88).mul_mod(&Natural::from_u64(77), &m),
+            Natural::from_u64(83)
+        );
+        // `Some(7).or(Some(6))` was written here, which `Option::or` evaluates to exactly `Some(7)`.
+        // The intent was "either square root", so say that: a modular square root is only defined up
+        // to sign, and which of `r` and `p − r` is returned is an implementation detail.
+        let root = tonelli_shanks_u32(10, 13).expect("10 is a quadratic residue mod 13");
+        assert!(
+            root == 6 || root == 7,
+            "tonelli_shanks_u32(10, 13) = {root}, want 6 or 7"
+        );
+        assert_eq!(root * root % 13, 10);
+    }
+
+    /// Both branches of `tonelli_shanks_u32` against every residue of a `p ≡ 3 (mod 4)` prime, which
+    /// takes the `n^((p+1)/4)` short-circuit, and a `p ≡ 1 (mod 4)` one, which runs the named
+    /// algorithm. Roughly half the factor base is `p ≡ 3 (mod 4)`, so the majority of calls in a real
+    /// run never execute Tonelli-Shanks proper.
+    #[test]
+    fn tonelli_shanks_covers_both_branches() {
+        for p in [13u32, 17, 29, 41, 97, 101, 7, 11, 19, 23, 31, 103] {
+            let mut roots = 0;
+            for n in 0..p {
+                match tonelli_shanks_u32(n, p) {
+                    Some(root) => {
+                        assert_eq!(root * root % p, n, "p={p} n={n} root={root}");
+                        roots += 1;
+                    }
+                    None => assert_eq!(legendre_u32(n, p), -1, "p={p} n={n}"),
+                }
+            }
+            // Zero plus the (p−1)/2 nonzero quadratic residues.
+            assert_eq!(roots, 1 + (p - 1) / 2, "p={p}");
+        }
+    }
+
+    /// Neither symbol had a direct test. `legendre_u32` is the Legendre symbol only because every
+    /// caller passes an odd prime; it delegates to the Jacobi symbol, which agrees there.
+    #[test]
+    fn jacobi_and_legendre_agree_with_the_euler_criterion() {
+        for p in [3u64, 5, 7, 11, 13, 17, 19, 23, 29, 31, 97, 101, 8191] {
+            for n in 0..p.min(200) {
+                let euler = crate::u64math::pow_mod(n, (p - 1) / 2, p);
+                let expected = match euler {
+                    0 => 0i8,
+                    1 => 1,
+                    _ => -1, // p − 1
+                };
+                assert_eq!(jacobi_u64(n, p), expected, "({n}/{p})");
+                assert_eq!(legendre_u32(n as u32, p as u32), expected, "({n}/{p})");
+            }
+        }
+        // Jacobi is defined for odd composite moduli too, where it is a product of Legendre symbols
+        // and no longer decides quadratic residuacity: 2 is a non-residue mod both 3 and 5, so the
+        // symbol is +1 mod 15 even though 2 is not a square there.
+        assert_eq!(jacobi_u64(2, 15), 1);
+        assert_eq!(jacobi_u64(3, 15), 0);
+    }
+    #[test]
+    fn agrees_with_u128() {
+        let mut state = 0x1234_5678_9abc_def0u128;
+        for _ in 0..500 {
+            state = state.wrapping_mul(0xda942042e4dd58b5).wrapping_add(1);
+            let a = state;
+            state = state.wrapping_mul(0xda942042e4dd58b5).wrapping_add(1);
+            let b = state;
+            let na = Natural::<2>::from_le_bytes(&a.to_le_bytes()).unwrap();
+            let nb = Natural::<2>::from_le_bytes(&b.to_le_bytes()).unwrap();
+            assert_eq!((&na + &nb).to_string(), a.wrapping_add(b).to_string());
+            assert_eq!((&na * &nb).to_string(), a.wrapping_mul(b).to_string());
+            if let Some(expected_q) = a.checked_div(b) {
+                let (q, r) = na.div_rem(&nb).unwrap();
+                assert_eq!(q.to_string(), expected_q.to_string());
+                assert_eq!(r.to_string(), (a % b).to_string());
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod difftests {
+    //! Randomized differential tests against `num-bigint` (dev-only oracle).
+    //! Guards the fast arithmetic kernels (SPEC §16).
+    use super::*;
+    use num_bigint::BigUint;
+
+    const P: usize = 16;
+
+    fn to_big(n: &Natural<P>) -> BigUint {
+        let mut bytes = Vec::with_capacity(P * 8);
+        for &limb in n.as_parts() {
+            bytes.extend_from_slice(&limb.to_le_bytes());
+        }
+        BigUint::from_bytes_le(&bytes)
+    }
+    fn wide_to_big(w: &WideNatural<P>) -> BigUint {
+        let mut bytes = Vec::with_capacity(2 * P * 8);
+        for &limb in w.low.iter().chain(w.high.iter()) {
+            bytes.extend_from_slice(&limb.to_le_bytes());
+        }
+        BigUint::from_bytes_le(&bytes)
+    }
+    struct Rng(u64);
+    impl Rng {
+        fn next(&mut self) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0
+        }
+        /// Random Natural with `limbs` significant limbs (exercises the
+        /// significant-limb-aware fast paths at every width).
+        fn natural(&mut self, limbs: usize) -> Natural<P> {
+            let mut n = Natural::<P>::ZERO;
+            for i in 0..limbs.min(P) {
+                n.as_mut_parts()[i] = self.next();
+            }
+            n
+        }
+    }
+
+    #[test]
+    fn diff_add_sub_mul() {
+        let mut rng = Rng(0xdead_beef_1234_5678);
+        let modulus = BigUint::from(1u8) << (64 * P);
+        for _ in 0..3000 {
+            let la = 1 + (rng.next() as usize % P);
+            let lb = 1 + (rng.next() as usize % P);
+            let a = rng.natural(la);
+            let b = rng.natural(lb);
+            let ba = to_big(&a);
+            let bb = to_big(&b);
+            assert_eq!(to_big(&a.wrapping_add(&b)), (&ba + &bb) % &modulus);
+            assert_eq!(
+                to_big(&a.wrapping_sub(&b)),
+                (&ba + &modulus - (&bb % &modulus)) % &modulus
+            );
+            assert_eq!(to_big(&a.wrapping_mul(&b)), (&ba * &bb) % &modulus);
+            assert_eq!(wide_to_big(&a.widening_mul(&b)), &ba * &bb);
+        }
+    }
+
+    #[test]
+    fn diff_div_rem() {
+        let mut rng = Rng(0x1122_3344_5566_7788);
+        for _ in 0..3000 {
+            let la = 1 + (rng.next() as usize % P);
+            let lb = 1 + (rng.next() as usize % P);
+            let a = rng.natural(la);
+            let mut b = rng.natural(lb);
+            if b.is_zero() {
+                b = Natural::ONE;
+            }
+            let (q, r) = a.div_rem(&b).unwrap();
+            let (ba, bb) = (to_big(&a), to_big(&b));
+            assert_eq!(to_big(&q), &ba / &bb, "quot a={ba} b={bb}");
+            assert_eq!(to_big(&r), &ba % &bb, "rem a={ba} b={bb}");
+        }
+    }
+
+    #[test]
+    fn diff_div_rem_u64() {
+        let mut rng = Rng(0x9988_7766_5544_3322);
+        for _ in 0..3000 {
+            let la = 1 + (rng.next() as usize % P);
+            let a = rng.natural(la);
+            let d = rng.next() | 1;
+            let (q, r) = a.div_rem_u64(d).unwrap();
+            let (ba, bd) = (to_big(&a), BigUint::from(d));
+            assert_eq!(to_big(&q), &ba / &bd);
+            assert_eq!(BigUint::from(r), &ba % &bd);
+        }
+    }
+
+    fn big_gcd(mut a: BigUint, mut b: BigUint) -> BigUint {
+        while b != BigUint::from(0u8) {
+            let r = &a % &b;
+            a = b;
+            b = r;
+        }
+        a
+    }
+    #[test]
+    fn diff_gcd() {
+        let mut rng = Rng(0x0f0f_0f0f_f0f0_f0f0);
+        for _ in 0..2000 {
+            let la = 1 + (rng.next() as usize % P);
+            let lb = 1 + (rng.next() as usize % P);
+            let a = rng.natural(la);
+            let b = rng.natural(lb);
+            assert_eq!(to_big(&a.gcd(&b)), big_gcd(to_big(&a), to_big(&b)));
+        }
+    }
+
+    /// Pollard-Brent's batched gcd, at the widths the rho stage runs on.
+    ///
+    /// One of these lands per batch of iterations, so its cost sets how large that batch has to be
+    /// before the gcd stops mattering; see `BENCHMARKING.md`.
+    #[test]
+    #[ignore = "manual gcd measurement"]
+    fn profile_gcd() {
+        for words in [2usize, 4, 8, 12, 16] {
+            let mut rng = Rng(0x9e37_79b9_7f4a_7c15);
+            let modulus = {
+                let mut n = rng.natural(words);
+                n.as_mut_parts()[0] |= 1;
+                n.as_mut_parts()[words - 1] |= 1 << 63;
+                n
+            };
+            let values: Vec<Natural<P>> = (0..256).map(|_| rng.natural(words)).collect();
+            let started = std::time::Instant::now();
+            let mut sink = Natural::<P>::ZERO;
+            for _ in 0..16 {
+                for value in &values {
+                    sink = std::hint::black_box(value.gcd(&modulus));
+                }
+            }
+            let elapsed = started.elapsed().as_secs_f64();
+            std::hint::black_box(&sink);
+            eprintln!(
+                "BENCH gcd words={words:2} bits={:5} calls={} elapsed={elapsed:.3}s each={:.0}ns",
+                words * 64,
+                values.len() * 16,
+                elapsed / (values.len() * 16) as f64 * 1e9
+            );
+        }
+    }
+
+    #[test]
+    fn diff_mul_mod_pow_mod() {
+        let mut rng = Rng(0xabcd_1234_ef56_7890);
+        for _ in 0..2000 {
+            // Include single-limb moduli (exercise the fast rem path).
+            let lm = 1 + (rng.next() as usize % P);
+            let mut m = rng.natural(lm);
+            if m < Natural::from_u64(2) {
+                m = Natural::from_u64(3);
+            }
+            let a = rng.natural(P);
+            let b = rng.natural(P);
+            let bm = to_big(&m);
+            let am = a.div_rem(&m).unwrap().1;
+            let bmod = b.div_rem(&m).unwrap().1;
+            assert_eq!(
+                to_big(&am.mul_mod(&bmod, &m)),
+                (to_big(&am) * to_big(&bmod)) % &bm
+            );
+            let e = rng.natural(2);
+            assert_eq!(
+                to_big(&a.pow_mod(&e, &m)),
+                to_big(&am).modpow(&to_big(&e), &bm)
+            );
+        }
+    }
+
+    #[test]
+    fn diff_montgomery_arithmetic() {
+        let mut rng = Rng(0x6d6f_6e74_676f_6d65);
+        for limbs in 1..=P {
+            for _ in 0..100 {
+                let mut modulus = rng.natural(limbs);
+                modulus.as_mut_parts()[0] |= 1;
+                if modulus < Natural::from_u64(3) {
+                    modulus = Natural::from_u64(3);
+                }
+                let context = MontgomeryContext::new(&modulus).expect("odd supported modulus");
+                let a = rng.natural(P).div_rem(&modulus).unwrap().1;
+                let b = rng.natural(P).div_rem(&modulus).unwrap().1;
+                let encoded_a = context.encode(&a);
+                let encoded_b = context.encode(&b);
+
+                assert_eq!(context.decode(&encoded_a), a);
+                assert_eq!(context.decode(&context.one()), Natural::ONE);
+                assert_eq!(
+                    context.decode(&context.add(&encoded_a, &encoded_b)),
+                    a.add_mod(&b, &modulus)
+                );
+                assert_eq!(
+                    context.decode(&context.multiply(&encoded_a, &encoded_b)),
+                    a.mul_mod(&b, &modulus)
+                );
+                assert_eq!(
+                    context.decode(&context.square(&encoded_a)),
+                    a.mul_mod(&a, &modulus)
+                );
+            }
+        }
+    }
+
+    #[test]
+    #[ignore = "manual Montgomery-versus-division modular-multiply measurement"]
+    fn profile_montgomery_mul() {
+        let modulus: Natural<P> =
+            "115792089237316195423570985008687907852837564279074904382605163141518161494337"
+                .parse()
+                .unwrap();
+        let context = MontgomeryContext::new(&modulus).unwrap();
+        let seed = Natural::from_u64(0xdead_beef_cafe_babe);
+        let repeats = 100_000;
+
+        let mut division_value = seed.clone();
+        let started = std::time::Instant::now();
+        for _ in 0..repeats {
+            division_value =
+                std::hint::black_box(division_value.mul_mod(&division_value, &modulus));
+        }
+        let division_elapsed = started.elapsed();
+
+        let mut montgomery_value = context.encode(&seed);
+        let started = std::time::Instant::now();
+        for _ in 0..repeats {
+            montgomery_value = std::hint::black_box(context.square(&montgomery_value));
+        }
+        let montgomery_elapsed = started.elapsed();
+        assert_eq!(context.decode(&montgomery_value), division_value);
+        eprintln!(
+            "BENCH modular_square_100k division={:.6}s montgomery={:.6}s speedup={:.2}x",
+            division_elapsed.as_secs_f64(),
+            montgomery_elapsed.as_secs_f64(),
+            division_elapsed.as_secs_f64() / montgomery_elapsed.as_secs_f64()
+        );
+    }
+
+    #[test]
+    fn diff_sqrt_and_perfect_power() {
+        let mut rng = Rng(0x3141_5926_5358_9793);
+        for _ in 0..1000 {
+            let limbs = 1 + rng.next() as usize % 8;
+            let value = rng.natural(limbs);
+            let big = to_big(&value);
+            let expected = big.sqrt();
+            let (root, remainder) = value.sqrt_rem();
+            assert_eq!(to_big(&root), expected);
+            assert_eq!(to_big(&remainder), &big - &expected * &expected);
+            assert_eq!(value.floor_sqrt(), root);
+            let ceil = if remainder.is_zero() {
+                root
+            } else {
+                root.wrapping_add(&Natural::ONE)
+            };
+            assert_eq!(value.ceil_sqrt(), ceil);
+        }
+
+        for exponent in 2..=12u32 {
+            for base in [2u64, 3, 5, 17, 257, 65_537] {
+                let big = BigUint::from(base).pow(exponent);
+                let value = Natural::<P>::from_le_bytes(&big.to_bytes_le()).unwrap();
+                let (root, power) = value
+                    .perfect_power()
+                    .unwrap_or_else(|| panic!("{base}^{exponent} was not recognized"));
+                assert_eq!(to_big(&root).pow(power), big);
+                assert!(power >= 2);
+            }
+        }
+    }
+
+    #[test]
+    fn diff_decimal_and_byte_round_trips() {
+        let mut rng = Rng(0x2718_2818_2845_9045);
+        for _ in 0..2000 {
+            let limbs = rng.next() as usize % (P + 1);
+            let value = rng.natural(limbs);
+            let big = to_big(&value);
+            let decimal = big.to_str_radix(10);
+            assert_eq!(value.to_string(), decimal);
+            assert_eq!(Natural::<P>::from_decimal(&decimal).unwrap(), value);
+
+            let significant_bytes = value.bit_len().div_ceil(8);
+            let mut little = vec![0u8; significant_bytes];
+            let little_len = value.write_le_bytes(&mut little).unwrap();
+            assert_eq!(little_len, significant_bytes);
+            let mut little_padded = little.clone();
+            little_padded.extend_from_slice(&[0; 7]);
+            assert_eq!(Natural::<P>::from_le_bytes(&little_padded).unwrap(), value);
+
+            let mut big_endian = vec![0u8; significant_bytes];
+            let big_len = value.write_be_bytes(&mut big_endian).unwrap();
+            assert_eq!(big_len, significant_bytes);
+            let mut big_padded = vec![0u8; 7];
+            big_padded.extend_from_slice(&big_endian);
+            assert_eq!(Natural::<P>::from_be_bytes(&big_padded).unwrap(), value);
+        }
+    }
+
+    #[test]
+    fn shifts_match_biguint_at_word_boundaries() {
+        let mut rng = Rng(0x1618_0339_8874_9894);
+        let modulus = BigUint::from(1u8) << Natural::<P>::BITS;
+        for shift in [
+            0,
+            1,
+            63,
+            64,
+            65,
+            127,
+            128,
+            Natural::<P>::BITS - 1,
+            Natural::<P>::BITS,
+            Natural::<P>::BITS + 64,
+        ] {
+            for _ in 0..32 {
+                let value = rng.natural(P);
+                let big = to_big(&value);
+                assert_eq!(
+                    to_big(&(value.clone() << shift)),
+                    (&big << shift) % &modulus
+                );
+                assert_eq!(to_big(&(value >> shift)), &big >> shift);
+            }
+        }
+    }
+}
