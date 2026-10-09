@@ -156,8 +156,8 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
   <div class="panels">
     <figure>
       <div class="view-label">Local Frame</div>
-      <canvas id="local" aria-label="The fleet seen from the lead ship, in its own frame"></canvas>
-      <figcaption>From the lead ship. Horizontal = along the path, vertical = toward the hole (up), colour =
+      <canvas id="local" aria-label="The fleet seen from the centre ship, in its own frame"></canvas>
+      <figcaption>From the centre ship. Horizontal = along the path, vertical = toward the hole (up), colour =
         out of the orbital plane. Watch a sphere become a thread.</figcaption>
     </figure>
     <figure>
@@ -315,7 +315,7 @@ function cameraIndex(ord) {
   return rider;
 }
 
-// ---- local frame of the lead ship: radial, along-path, out-of-plane
+// ---- local frame of the centre ship (ships[0], the middle of the starting sphere): radial, along-path, out-of-plane
 function localFrame() {
   const s = ships[0], p = shipPos(s), rhat = unit(p), nhat = s.n, that = cross(nhat, rhat);
   const rows = [];
@@ -610,7 +610,7 @@ function sample() {
 
 function phaseText() {
   const s = ships[0], alive = ships.filter(x => x.alive).length;
-  if (!s.alive) return "the lead ship has reached the singularity";
+  if (!s.alive) return "the centre ship has reached the singularity";
   if (split && alive > 1) return "the fleet has split: some ships plunge, some climb back out";
   if (s.r < 2) return "inside the horizon — the stretch is now in time, not space";
   if (s.r < 3) return "inside the photon sphere";
