@@ -51,7 +51,16 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 :root[data-theme="dark"] button.primary, :root:not([data-theme="light"]) button.primary { color: #15181e; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-label.ctl { font: .8rem/1.3 var(--mono); color: var(--muted); display: inline-flex; align-items: center;
+.seg { display: inline-flex; }
+.seg button { border-radius: 0; margin-left: -1px; padding: .35rem .65rem; }
+.seg button:first-child { border-radius: 7px 0 0 7px; margin-left: 0; }
+.seg button:last-child { border-radius: 0 7px 7px 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; position: relative; }
+:root[data-theme="dark"] .seg button[aria-pressed="true"] { color: #15181e; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .seg button[aria-pressed="true"] { color: #15181e; }
+}
+label.ctl, span.ctl { font: .8rem/1.3 var(--mono); color: var(--muted); display: inline-flex; align-items: center;
   gap: .4rem; flex-wrap: wrap; }
 input[type=range] { width: 7.5rem; accent-color: var(--accent); }
 output { font: 500 .8rem var(--mono); color: var(--fg); min-width: 2.6rem; display: inline-block; }
@@ -109,11 +118,11 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
       <option value="4.3e6">4.3 million M☉ (Sgr A*)</option>
       <option value="6.5e9">6.5 billion M☉ (M87*)</option>
     </select></label>
-    <label class="ctl">view from<select data-k="station">
-      <option value="1.00">lead ship</option>
-      <option value="0.90">top 10%</option>
-      <option value="0.25" selected>bottom 75%</option>
-    </select></label>
+    <span class="ctl">view from<span class="seg" role="group" aria-label="view from">
+      <button type="button" data-station="1.00" aria-pressed="false">lead ship</button><button type="button"
+        data-station="0.90" aria-pressed="false">top 10%</button><button type="button"
+        data-station="0.25" aria-pressed="true">bottom 75%</button>
+    </span></span>
     <label class="ctl">trails<input data-k="trails" type="checkbox" checked></label>
     <label class="ctl first-person">hole in view<input data-k="holeLock" type="checkbox" checked></label>
   </div>
@@ -659,8 +668,11 @@ const bind = (k, fn, fmt) => all(k).forEach(el => el.addEventListener("input", (
 bind("speed", v => { P.speed = v; }, v => v.toFixed(1));
 bind("angm", v => { P.L = v; buildFleet(); }, v => v.toFixed(2));
 bind("spread", v => { P.spread = v; buildFleet(); }, v => v.toFixed(2));
-all("station").forEach(el => el.addEventListener("change", () => {
-  sync("station", el); P.station = +el.value; selected = null; rider = null; pano.yaw = 0; pano.pitch = 0; pano.zoom = 1;
+document.querySelectorAll("[data-station]").forEach(el => el.addEventListener("click", () => {
+  document.querySelectorAll("[data-station]").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.station === el.dataset.station));
+  });
+  P.station = +el.dataset.station; selected = null; rider = null; pano.yaw = 0; pano.pitch = 0; pano.zoom = 1;
 }));
 all("mass").forEach(el => el.addEventListener("change", () => { sync("mass", el); P.mass = +el.value; }));
 all("trails").forEach(el => el.addEventListener("change", () => {
