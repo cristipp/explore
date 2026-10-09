@@ -122,7 +122,8 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
       <canvas id="forward" aria-label="The view from a ship in the rear third of the fleet, looking ahead"></canvas>
       <figcaption><b>First person,</b> looking along the line of flight. By default the view tilts to keep the hole
         in the bottom tenth of the frame; drag to look around freely (this turns "hole in view" off), scroll or
-        pinch to zoom, double-click to face front. The marker on the frame edge points to the hole when it is out of view.
+        pinch to zoom, double-click to face front. The marker on the frame edge points to the hole when it is out of view. Each dot is drawn at the true apparent size of a ship at its true
+        distance, so size is an honest distance cue; ships too far to cover a pixel fade instead of shrinking.
         The ships ahead are deeper in, so they fall faster and pull away: you watch your own formation leave you
         behind.</figcaption>
     </figure>
@@ -389,6 +390,8 @@ function drawStage() {
 }
 
 // ---- the view from one ship, looking along the line of flight, free to look around
+const GLOW = 1.3;          // the faint rim around the hole in the first-person view, in hole radii
+const SHIP_R = 0.007;      // ship radius in M, for the first-person apparent size
 function drawForward() {
   const cv = document.getElementById("forward"), { g, w, h } = surface(cv), k = C();
   g.fillStyle = k.void; g.fillRect(0, 0, w, h);
@@ -406,13 +409,13 @@ function drawForward() {
   const r0 = cross(u0, f0);
   const f = pano.zoom * (w/2) / Math.tan(45*Math.PI/180);
 
-  // "hole in view": face along the path, pitched so the hole's disc fills the bottom tenth of the frame.
+  // "hole in view": face along the path, pitched so the hole (disc plus glow) fills only the bottom tenth.
   // The hole lies straight below the flight path in this frame, so only the pitch has to change.
   if (P.holeLock && len(eye) > 2.02) {
     const d = len(eye), below = Math.acos(Math.max(-1, Math.min(1, -dot(f0, unit(eye)))));
     const R = f * 2/Math.sqrt(d*d - 4);
     pano.yaw = 0;
-    pano.pitch = Math.max(-1.4, Math.min(1.4, Math.atan((0.4*h + R)/f) - below));
+    pano.pitch = Math.max(-1.4, Math.min(1.4, Math.atan((0.4*h + R*GLOW)/f) - below));
   }
   const cy = Math.cos(pano.yaw), sy = Math.sin(pano.yaw);
   const hd = [cy*f0[0] + sy*r0[0], cy*f0[1] + sy*r0[1], cy*f0[2] + sy*r0[2]];
@@ -429,9 +432,9 @@ function drawForward() {
     const rad = f * 2/Math.sqrt(dHole*dHole - 4);
     if (x > -rad && x < w + rad && y > -rad && y < h + rad) {
       holeOnScreen = true;
-      const gl = g.createRadialGradient(x, y, rad, x, y, rad*3);
+      const gl = g.createRadialGradient(x, y, rad, x, y, rad*GLOW);
       gl.addColorStop(0, "rgba(130,150,200,0.20)"); gl.addColorStop(1, "rgba(0,0,0,0)");
-      g.fillStyle = gl; g.beginPath(); g.arc(x, y, rad*3, 0, 2*Math.PI); g.fill();
+      g.fillStyle = gl; g.beginPath(); g.arc(x, y, rad*GLOW, 0, 2*Math.PI); g.fill();
       g.fillStyle = "#000"; g.beginPath(); g.arc(x, y, rad, 0, 2*Math.PI); g.fill();
       g.strokeStyle = "rgba(190,205,235,0.55)"; g.lineWidth = 1.2; g.stroke();
     }
@@ -445,13 +448,16 @@ function drawForward() {
     if (o.i === me) continue;
     const v = view(shipPos(ships[o.i]));
     if (v[2] < 0.02) continue;
-    drawn.push({ x: w/2 + f*v[0]/v[2], y: h/2 - f*v[1]/v[2], z: v[2], lead: o.i === lead });
+    drawn.push({ x: w/2 + f*v[0]/v[2], y: h/2 - f*v[1]/v[2], z: v[2], dist: Math.hypot(v[0], v[1], v[2]),
+      lead: o.i === lead });
   }
   drawn.sort((a, b) => b.z - a.z);
   for (const d of drawn) {
-    const rad = Math.max(1.0, Math.min(9, f*0.007/d.z));
+    // apparent size is the true angular size of a ship at its true distance: an honest distance cue.
+    // Below 0.7 px a dot cannot shrink further, so it fades instead, keeping its drawn area honest.
+    const trueRad = f*SHIP_R/d.dist, rad = Math.max(0.7, trueRad);
     g.fillStyle = d.lead ? k.ink : k.radial;
-    g.globalAlpha = Math.max(0.4, Math.min(1, 8/d.z));
+    g.globalAlpha = Math.min(1, (trueRad/rad)**2);
     g.beginPath(); g.arc(d.x, d.y, rad, 0, 2*Math.PI); g.fill();
     g.globalAlpha = 1;
     if (d.lead) {
