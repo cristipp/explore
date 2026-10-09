@@ -73,6 +73,7 @@ canvas { display: block; width: 100%; background: var(--void); border-radius: 10
 .panels canvas { aspect-ratio: 4 / 3; }
 .panels.views canvas { aspect-ratio: 1 / 1; }
 .readout + .controls { margin-top: 1.6rem; }
+.view-label { font: 600 1.05rem/1.3 var(--display); margin: 0 0 .35rem; }
 figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
 .note { font-size: .88rem; color: var(--muted); border-left: 2px solid var(--rule); padding-left: .8rem;
   margin: 1.4rem 0; max-width: 44rem; }
@@ -129,12 +130,14 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
 
   <div class="panels views">
     <figure>
+      <div class="view-label">Outside Observer</div>
       <canvas id="stage" aria-label="Three-dimensional view of a fleet of ships spiralling into a black hole"></canvas>
-      <figcaption><b>Outside observer.</b> Drag to orbit, scroll or pinch to zoom, click any ship to ride it.</figcaption>
+      <figcaption>Drag to orbit, scroll or pinch to zoom, click any ship to ride it.</figcaption>
     </figure>
     <figure>
+      <div class="view-label">First Person View</div>
       <canvas id="forward" aria-label="The view from a ship in the rear third of the fleet, looking ahead"></canvas>
-      <figcaption><b>First person,</b> looking along the line of flight. By default the view tilts to keep the hole
+      <figcaption>Looking along the line of flight. By default the view tilts to keep the hole
         in the bottom tenth of the frame; drag to look around freely (this turns "hole in view" off), scroll or
         pinch to zoom, double-click to face front. The marker on the frame edge points to the hole when it is out of view. Each dot is drawn at the true apparent size of a ship at its true
         distance, so size is an honest distance cue; ships too far to cover a pixel fade instead of shrinking, and
@@ -152,11 +155,13 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
 
   <div class="panels">
     <figure>
+      <div class="view-label">Local Frame</div>
       <canvas id="local" aria-label="The fleet seen from the lead ship, in its own frame"></canvas>
       <figcaption>From the lead ship. Horizontal = along the path, vertical = toward the hole (up), colour =
         out of the orbital plane. Watch a sphere become a thread.</figcaption>
     </figure>
     <figure>
+      <div class="view-label">Fleet Spread</div>
       <canvas id="chart" aria-label="Chart of how far the fleet spreads along each of three axes over time"></canvas>
       <figcaption>How far the fleet spreads along each axis, logarithmic. The green curve dips each time the
         formation is pinched flat.</figcaption>
