@@ -104,6 +104,11 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
     <label class="ctl">speed<input data-k="speed" type="range" min="0.4" max="8" step="0.2" value="1.4"><output data-o="speed">1.4</output></label>
     <label class="ctl">L/M<input data-k="angm" type="range" min="3.0" max="3.8" step="0.01" value="3.50"><output data-o="angm">3.50</output></label>
     <label class="ctl">fleet size<input data-k="spread" type="range" min="0.1" max="0.8" step="0.05" value="0.30"><output data-o="spread">0.30</output></label>
+    <label class="ctl">hole mass<select data-k="mass">
+      <option value="10" selected>10 M☉ (stellar)</option>
+      <option value="4.3e6">4.3 million M☉ (Sgr A*)</option>
+      <option value="6.5e9">6.5 billion M☉ (M87*)</option>
+    </select></label>
     <label class="ctl">view from<select data-k="station">
       <option value="1.00">lead ship</option>
       <option value="0.90">top 10%</option>
@@ -130,7 +135,7 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
     </figure>
   </div>
   <div class="readout">
-    <span>r/M <b id="rOut">16.0</b></span>
+    <span>r <b id="rOut">16.0 M</b></span>
     <span>proper time τ/M <b id="tOut">0</b></span>
     <span>ships <b id="nOut">49</b></span>
     <span id="phase"><b>approaching</b></span>
@@ -237,7 +242,17 @@ function advance(s, dt) {
 // threshold at L/M ~ 3.645 regardless of where we start them.
 const APO = 16, R0 = 12;
 let ships = [], tau = 0, running = false, history = [], split = false;
-const P = { L: 3.5, spread: 0.30, N: 48, speed: 1.4, trails: true, station: 0.25, holeLock: true };
+const P = { L: 3.5, spread: 0.30, N: 48, speed: 1.4, trails: true, station: 0.25, holeLock: true, mass: 10 };
+// one M is GM/c² = 1.4766 km per solar mass; used to put every length in M beside its size in km
+const KM_PER_MSUN = 1.4766;
+function inKm(m) {
+  const km = m * KM_PER_MSUN * P.mass, sig = x => +x.toPrecision(2);
+  if (km < 1) return `${sig(km*1000)} m`;
+  if (km < 1e5) return `${sig(km).toLocaleString("en")} km`;
+  if (km < 1e9) return `${sig(km/1e6)} million km`;
+  return `${sig(km/1e9)} billion km`;
+}
+const withKm = m => `${m.toFixed(2)} M / ${inKm(m)}`;
 const cam = { az: 0.75, el: 0.42, dist: 46 };
 const pano = { yaw: 0, pitch: 0, zoom: 1 };   // where the crew is looking, relative to the line of flight
 let selected = null;                 // a ship picked by clicking, else the station preset decides
@@ -498,8 +513,8 @@ function drawForward() {
   const leadDist = lead >= 0 && lead !== me ? len(sub(shipPos(ships[lead]), eye)) : 0;
   g.fillStyle = k.dim; g.textAlign = "left"; g.textBaseline = "top";
   g.fillText(`ship ${rank} of ${ord.length} from the rear${selected !== null ? " (picked)" : ""}`, 10, 8);
-  if (leadDist > 0) g.fillText(`lead ship ${leadDist.toFixed(2)} M ahead`, 10, 24);
-  g.fillText(dHole > 2.02 ? `hole ${dHole.toFixed(2)} M away` : "inside the horizon", 10, 40);
+  if (leadDist > 0) g.fillText(`lead ship ${withKm(leadDist)} ahead`, 10, 24);
+  g.fillText(dHole > 2.02 ? `hole ${withKm(dHole)} away` : "inside the horizon", 10, 40);
   g.textAlign = "right";
   const off = Math.round(pano.yaw*180/Math.PI);
   g.fillText(P.holeLock ? "hole in view · drag to look around"
@@ -609,7 +624,7 @@ function tick(dt) {
 function render() {
   drawStage(); drawForward(); drawLocal(); drawChart();
   const s = ships[0];
-  document.getElementById("rOut").textContent = s.alive ? s.r.toFixed(2) : "0";
+  document.getElementById("rOut").textContent = s.alive ? withKm(s.r) : "0";
   document.getElementById("tOut").textContent = tau.toFixed(1);
   document.getElementById("nOut").textContent = String(ships.filter(x => x.alive).length);
   document.getElementById("phase").innerHTML = "<b>" + phaseText() + "</b>";
@@ -647,6 +662,7 @@ bind("spread", v => { P.spread = v; buildFleet(); }, v => v.toFixed(2));
 all("station").forEach(el => el.addEventListener("change", () => {
   sync("station", el); P.station = +el.value; selected = null; rider = null; pano.yaw = 0; pano.pitch = 0; pano.zoom = 1;
 }));
+all("mass").forEach(el => el.addEventListener("change", () => { sync("mass", el); P.mass = +el.value; }));
 all("trails").forEach(el => el.addEventListener("change", () => {
   sync("trails", el); P.trails = el.checked;
   if (!P.trails) for (const s of ships) s.trail = [];
