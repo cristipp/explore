@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Singularity Angled Infall</title>
+<meta name="description" content="A fleet of spacecraft falls into a Schwarzschild black hole at an angle. Exact geodesics, integrated live in the browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: a reading column; a shared control band over each side-by-side pair of views */
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --fg: #15181e; --muted: #5c6472; --rule: #dde0e6;
+  --accent: #9a6a12;
+  --void: #06070b;        /* canvas ground, identical in both themes: space is dark */
+  --onvoid: #e8eaee; --onvoid-dim: #8e96a4;
+  --radial: #3987e5; --along: #d95926; --normal: #199e70;
+  --display: "Newsreader", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101319; --panel: #171b23; --fg: #e6e9ee; --muted: #99a1b0; --rule: #272d38;
+    --accent: #d9b968; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101319; --panel: #171b23; --fg: #e6e9ee; --muted: #99a1b0; --rule: #272d38;
+  --accent: #d9b968; color-scheme: dark;
+}
+html { font-size: 20px; }
+body { background: var(--bg); color: var(--fg); font: 1rem/1.6 var(--display); }
+main { max-width: 64rem; margin: 0 auto; padding-inline: 16px; padding-block: 2rem 3.5rem; }
+h1 { font: 600 2.1rem/1.15 var(--display); margin: 0 0 .4rem; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0 0 1.4rem; max-width: 44rem; }
+.blurb { margin: 0 0 1.6rem; }
+.blurb ol { margin: 0 0 .8rem; padding-left: 1.3rem; max-width: 44rem; }
+.blurb li { margin: .35rem 0; }
+h2 { font: 600 1.15rem/1.3 var(--display); margin: 2rem 0 .5rem; }
+p { margin: 0 0 .8rem; max-width: 44rem; }
+ul { margin: 0 0 .8rem; padding-left: 1.1rem; max-width: 44rem; }
+li { margin: .3rem 0; }
+b { font-weight: 600; }
+.controls { display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: .7rem .85rem;
+  margin-bottom: .7rem; }
+button, select { font: 500 .85rem var(--mono); padding: .35rem .8rem; border: 1px solid var(--rule);
+  border-radius: 7px; background: var(--bg); color: var(--fg); cursor: pointer; }
+button:hover, select:hover { border-color: var(--accent); }
+select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.primary, :root:not([data-theme="light"]) button.primary { color: #15181e; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; }
+.seg button { border-radius: 0; margin-left: -1px; padding: .35rem .65rem; }
+.seg button:first-child { border-radius: 7px 0 0 7px; margin-left: 0; }
+.seg button:last-child { border-radius: 0 7px 7px 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; position: relative; }
+:root[data-theme="dark"] .seg button[aria-pressed="true"] { color: #15181e; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .seg button[aria-pressed="true"] { color: #15181e; }
+}
+label.ctl, span.ctl { font: .8rem/1.3 var(--mono); color: var(--muted); display: inline-flex; align-items: center;
+  gap: .4rem; flex-wrap: wrap; }
+input[type=range] { width: 7.5rem; accent-color: var(--accent); }
+output { font: 500 .8rem var(--mono); color: var(--fg); min-width: 2.6rem; display: inline-block; }
+canvas { display: block; width: 100%; background: var(--void); border-radius: 10px; touch-action: none; }
+.readout { display: flex; flex-wrap: wrap; gap: .2rem 1.4rem; font: .82rem var(--mono); color: var(--muted);
+  margin: .55rem 0 1.1rem; }
+.readout b { color: var(--fg); font-weight: 500; }
+.panels { display: flex; flex-wrap: wrap; gap: .8rem; }
+.panels > figure { flex: 1 1 17rem; min-width: 0; margin: 0; }
+.panels canvas { aspect-ratio: 4 / 3; }
+.panels.views canvas { aspect-ratio: 1 / 1; }
+.readout + .controls { margin-top: 1.6rem; }
+figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
+.note { font-size: .88rem; color: var(--muted); border-left: 2px solid var(--rule); padding-left: .8rem;
+  margin: 1.4rem 0; max-width: 44rem; }
+</style>
+
+<main>
+  <h1>Singularity Angled Infall</h1>
+<p class="credit" style="font-size:.85em;opacity:.75"><em>Created on 9 October 2026 by Claude Opus 5.5, prompted by <a href="https://x.com/cristipp127">@cristipp127</a>.</em></p>
+  <p class="lede">What happens to a spacecraft that falls into a black hole at an angle, rather than on a straight
+    radial dive?</p>
+
+  <section class="blurb">
+    <p>Below, a formation of 49 ships falls into a non-rotating (Schwarzschild) black hole on a slanted path that
+      carries angular momentum. Each ship follows its own exact geodesic, integrated live in proper time, so every
+      deformation you see is computed rather than drawn. Lengths are in units of the hole's mass M, so the picture
+      is the same for any size of hole; only the scale changes.</p>
+    <p>The radial dive is the familiar textbook case: the body is stretched toward the hole into a needle. The
+      angled fall looks different, and it makes three points:</p>
+    <ol>
+      <li><b>It is a squeeze more than a scatter.</b> The tidal field stretches along one axis and compresses
+        along the other two, so most of the formation converges rather than flying apart.</li>
+      <li><b>The long axis ends up along the path, not pointing at the hole.</b> Ships at slightly different radii
+        orbit at slightly different rates, which shears the fleet into a thread wound around the hole like thread
+        on a spool. A star torn apart by a black hole forms a stream for the same reason.</li>
+      <li><b>A ship is kneaded, not just pulled.</b> The stretch axis stays tied to the direction of the hole while
+        the ship swings around it, so the stretch sweeps through the hull. Each structural member cycles between
+        tension and compression, and it fails by fatigue rather than a single clean snap.</li>
+    </ol>
+    <p>The <b>L/M</b> slider sets the angular momentum. Below about 3.645 every ship is captured; just above it the
+      fleet whirls near the edge of capture and splits between ships that plunge and ships that climb back out.
+      How violent any of this is depends on the hole's mass: the tidal force at the horizon falls as 1/M², so a
+      supermassive hole lets a ship cross intact and the damage happens deep inside.</p>
+  </section>
+
+  <div class="controls">
+    <button data-k="play" class="primary" type="button">Play</button>
+    <button data-k="reset" type="button">Reset</button>
+    <label class="ctl">speed<input data-k="speed" type="range" min="0.4" max="8" step="0.2" value="1.4"><output data-o="speed">1.4</output></label>
+    <label class="ctl">L/M<input data-k="angm" type="range" min="3.0" max="3.8" step="0.01" value="3.50"><output data-o="angm">3.50</output></label>
+    <label class="ctl">fleet size<input data-k="spread" type="range" min="0.1" max="0.8" step="0.05" value="0.30"><output data-o="spread">0.30</output></label>
+    <label class="ctl">hole mass<select data-k="mass">
+      <option value="10" selected>10 M☉ (stellar)</option>
+      <option value="4.3e6">4.3 million M☉ (Sgr A*)</option>
+      <option value="6.5e9">6.5 billion M☉ (M87*)</option>
+    </select></label>
+    <span class="ctl">view from<span class="seg" role="group" aria-label="view from">
+      <button type="button" data-station="1.00" aria-pressed="false">lead ship</button><button type="button"
+        data-station="0.90" aria-pressed="false">top 10%</button><button type="button"
+        data-station="0.25" aria-pressed="true">bottom 75%</button>
+    </span></span>
+    <label class="ctl">trails<input data-k="trails" type="checkbox" checked></label>
+    <label class="ctl first-person">hole in view<input data-k="holeLock" type="checkbox" checked></label>
+  </div>
+
+  <div class="panels views">
+    <figure>
+      <canvas id="stage" aria-label="Three-dimensional view of a fleet of ships spiralling into a black hole"></canvas>
+      <figcaption><b>Outside observer.</b> Drag to orbit, scroll or pinch to zoom, click any ship to ride it.</figcaption>
+    </figure>
+    <figure>
+      <canvas id="forward" aria-label="The view from a ship in the rear third of the fleet, looking ahead"></canvas>
+      <figcaption><b>First person,</b> looking along the line of flight. By default the view tilts to keep the hole
+        in the bottom tenth of the frame; drag to look around freely (this turns "hole in view" off), scroll or
+        pinch to zoom, double-click to face front. The marker on the frame edge points to the hole when it is out of view. Each dot is drawn at the true apparent size of a ship at its true
+        distance, so size is an honest distance cue; ships too far to cover a pixel fade instead of shrinking, and
+        everything beyond 8 M also dims with distance.
+        The ships ahead are deeper in, so they fall faster and pull away: you watch your own formation leave you
+        behind.</figcaption>
+    </figure>
+  </div>
+  <div class="readout">
+    <span>r <b id="rOut">16.0 M</b></span>
+    <span>proper time τ/M <b id="tOut">0</b></span>
+    <span>ships <b id="nOut">49</b></span>
+    <span id="phase"><b>approaching</b></span>
+  </div>
+
+  <div class="panels">
+    <figure>
+      <canvas id="local" aria-label="The fleet seen from the lead ship, in its own frame"></canvas>
+      <figcaption>From the lead ship. Horizontal = along the path, vertical = toward the hole (up), colour =
+        out of the orbital plane. Watch a sphere become a thread.</figcaption>
+    </figure>
+    <figure>
+      <canvas id="chart" aria-label="Chart of how far the fleet spreads along each of three axes over time"></canvas>
+      <figcaption>How far the fleet spreads along each axis, logarithmic. The green curve dips each time the
+        formation is pinched flat.</figcaption>
+    </figure>
+  </div>
+
+  <h2>What to look for</h2>
+  <ul>
+    <li><b>Most of the fleet closes in on you.</b> The tidal field stretches along one axis and squeezes along
+      two. Ships beside you are pulled toward you, not away.</li>
+    <li><b>The long axis ends up along the path, not pointing at the hole.</b> Ships at slightly different radii
+      have slightly different orbital periods, and that difference shears the formation out along its own
+      trajectory. This is why debris from a real disrupted star forms a stream wound around the hole.</li>
+    <li><b>The pinch.</b> Every ship orbits in a plane through the centre, and all those planes cross along a
+      common line. Ships lifted out of the plane are forced back through it — a collision hazard, and the dip in
+      the green curve.</li>
+    <li><b>Near L/M ≈ 3.64 the fleet splits.</b> Ships whirl at the edge of capture, and arbitrarily small
+      differences in approach decide who plunges and who climbs back out. That is chaotic scattering, and it is
+      the one part of this where the word "scattering" is literally right.</li>
+    <li><b>Ride any ship you like.</b> Click one in the top view, or use the selector. From a station near the
+      back you watch the fleet pull away ahead of you; from the lead ship you watch it fall behind. Drag the
+      forward view to look around, and double-click it to face front again.</li>
+  </ul>
+
+  <p class="note">The trajectories are exact, but the rendering is not: light is drawn travelling in straight
+    lines, so there is no lensing, no Einstein ring and no multiple imaging. The black disc is the horizon at
+    r = 2M; the dashed rings mark the photon sphere at 3M and the innermost stable circular orbit at 6M. The
+    fleet is drawn far larger than any real formation would be, so that the deformation is visible at all.</p>
+</main>
+
+<script>
+"use strict";
+const sub = (a,b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+const dot = (a,b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+const cross = (a,b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+const len = a => Math.sqrt(dot(a,a));
+const scl = (a,k) => [a[0]*k, a[1]*k, a[2]*k];
+const unit = a => { const n = len(a); return n > 1e-12 ? scl(a, 1/n) : [0,0,1]; };
+
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = () => ({ void: cssVar("--void"), ink: cssVar("--onvoid"), dim: cssVar("--onvoid-dim"),
+  radial: cssVar("--radial"), along: cssVar("--along"), normal: cssVar("--normal") });
+
+function surface(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || 600, h = cv.clientHeight || 360;
+  if (cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)) {
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+  }
+  const g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  g.font = "12px 'IBM Plex Mono', monospace";
+  return { g, w, h };
+}
+
+// ---- geodesics in Schwarzschild, M = 1, proper time. Every orbit is planar, so each ship carries its own
+// plane and we integrate (r, phi) inside it. This form has no coordinate trouble at the horizon.
+const accel = (r, L) => L*L/(r*r*r) - 1/(r*r) - 3*L*L/(r*r*r*r);
+
+function makeShip(p, u) {
+  const r = len(p), vr = dot(p, u)/r, Lv = cross(p, u), L = len(Lv);
+  const n = L > 1e-9 ? scl(Lv, 1/L) : [0,0,1];
+  const e1 = scl(p, 1/r), e2 = cross(n, e1);
+  return { r, vr, phi: 0, L, n, e1, e2, alive: true, trail: [] };
+}
+function shipPos(s) {
+  const c = Math.cos(s.phi), q = Math.sin(s.phi);
+  return [s.r*(c*s.e1[0] + q*s.e2[0]), s.r*(c*s.e1[1] + q*s.e2[1]), s.r*(c*s.e1[2] + q*s.e2[2])];
+}
+function advance(s, dt) {
+  if (!s.alive) return;
+  const L = s.L;
+  const sub_n = Math.min(240, Math.max(1, Math.ceil(dt / (0.02 * Math.pow(Math.max(s.r, 0.12), 1.5)))));
+  const h = dt / sub_n;
+  for (let i = 0; i < sub_n; i++) {
+    const r0 = s.r, v0 = s.vr;
+    const a1 = accel(r0, L);
+    const r2 = r0 + h/2*v0,          v2 = v0 + h/2*a1, a2 = accel(Math.max(r2, 1e-3), L);
+    const r3 = r0 + h/2*v2,          v3 = v0 + h/2*a2, a3 = accel(Math.max(r3, 1e-3), L);
+    const r4 = r0 + h*v3,            v4 = v0 + h*a3,   a4 = accel(Math.max(r4, 1e-3), L);
+    s.r  = r0 + h/6*(v0 + 2*v2 + 2*v3 + v4);
+    s.vr = v0 + h/6*(a1 + 2*a2 + 2*a3 + a4);
+    const rm = Math.max((r0 + s.r)/2, 1e-3);
+    s.phi += h/6*(L/(r0*r0) + 4*L/(rm*rm) + L/(Math.max(s.r,1e-3)*Math.max(s.r,1e-3)));
+    if (s.r < 0.1) { s.r = 0.1; s.alive = false; return; }
+  }
+}
+
+// ---- the fleet: a sphere of ships, all given the same initial velocity, so only position sets them apart.
+// They start already falling, on the orbit whose outer turning point is APO, which fixes the capture
+// threshold at L/M ~ 3.645 regardless of where we start them.
+const APO = 16, R0 = 12;
+let ships = [], tau = 0, running = false, history = [], split = false;
+const P = { L: 3.5, spread: 0.30, N: 48, speed: 1.4, trails: true, station: 0.25, holeLock: true, mass: 10 };
+// one M is GM/c² = 1.4766 km per solar mass; used to put every length in M beside its size in km
+const KM_PER_MSUN = 1.4766;
+function inKm(m) {
+  const km = m * KM_PER_MSUN * P.mass, sig = x => +x.toPrecision(2);
+  if (km < 1) return `${sig(km*1000)} m`;
+  if (km < 1e5) return `${sig(km).toLocaleString("en")} km`;
+  if (km < 1e9) return `${sig(km/1e6)} million km`;
+  return `${sig(km/1e9)} billion km`;
+}
+const withKm = m => `${m.toFixed(2)} M / ${inKm(m)}`;
+const cam = { az: 0.75, el: 0.42, dist: 46 };
+const pano = { yaw: 0, pitch: 0, zoom: 1 };   // where the crew is looking, relative to the line of flight
+let selected = null;                 // a ship picked by clicking, else the station preset decides
+let rider = null;                    // the ship the preset chose; kept until it dies so the camera does not hop
+let leader = null;                   // the ship that led at the start; kept until it dies so the label does not hop
+let stageHits = [];                  // screen positions from the last stage draw, for click selection
+
+function buildFleet() {
+  const E2 = (1 - 2/APO)*(1 + P.L*P.L/(APO*APO));
+  const vr0 = -Math.sqrt(Math.max(0, E2 - (1 - 2/R0)*(1 + P.L*P.L/(R0*R0))));
+  const vt = P.L / R0, base = [R0, 0, 0], bu = [vr0, vt, 0];
+  ships = [makeShip(base, bu)];
+  for (let i = 0; i < P.N; i++) {
+    const y = 1 - (i + 0.5)/P.N*2, rad = Math.sqrt(Math.max(0, 1 - y*y));
+    const th = Math.PI*(1 + Math.sqrt(5))*i;
+    const d = [Math.cos(th)*rad, y, Math.sin(th)*rad];
+    ships.push(makeShip([base[0] + P.spread*d[0], base[1] + P.spread*d[1], base[2] + P.spread*d[2]], bu));
+  }
+  tau = 0; history = []; split = false; rider = null; leader = null;
+}
+
+// ---- the true direction of motion: tangential far out, almost radial during the plunge
+function pathDir(s) {
+  const p = shipPos(s), rhat = unit(p), that = cross(s.n, rhat), vt = s.L/s.r;
+  return unit([s.vr*rhat[0] + vt*that[0], s.vr*rhat[1] + vt*that[1], s.vr*rhat[2] + vt*that[2]]);
+}
+
+// ---- the fleet ordered back-to-front along the line of flight; the crew rides at P.station
+function fleetOrder() {
+  if (!ships.length) return [];
+  const ref = ships[0], p0 = shipPos(ref), f = pathDir(ref), out = [];
+  for (let i = 0; i < ships.length; i++) {
+    if (ships[i].alive) out.push({ i, s: dot(sub(shipPos(ships[i]), p0), f) });
+  }
+  out.sort((a, b) => a.s - b.s);
+  return out;
+}
+
+// ---- which ship the crew is riding: an explicit pick while it lives, otherwise the preset station
+function cameraIndex(ord) {
+  if (!ord.length) return null;
+  if (selected !== null && ships[selected] && ships[selected].alive) return selected;
+  selected = null;
+  if (rider !== null && ships[rider] && ships[rider].alive) return rider;
+  rider = ord[Math.min(ord.length - 1, Math.max(0, Math.round(P.station * (ord.length - 1))))].i;
+  return rider;
+}
+
+// ---- local frame of the lead ship: radial, along-path, out-of-plane
+function localFrame() {
+  const s = ships[0], p = shipPos(s), rhat = unit(p), nhat = s.n, that = cross(nhat, rhat);
+  const rows = [];
+  for (let i = 1; i < ships.length; i++) {
+    const d = sub(shipPos(ships[i]), p);
+    rows.push({ a: dot(d, rhat), b: dot(d, that), c: dot(d, nhat), alive: ships[i].alive });
+  }
+  return rows;
+}
+
+// ---- camera
+function projector(w, h) {
+  const ce = Math.cos(cam.el), se = Math.sin(cam.el);
+  const wv = [ce*Math.cos(cam.az), ce*Math.sin(cam.az), se];
+  const right = unit(cross([0,0,1], wv)), up = cross(wv, right);
+  const eye = scl(wv, cam.dist), f = Math.min(w, h) * 1.15;
+  return pt => {
+    const d = sub(pt, eye), z = -dot(d, wv);
+    if (z < 0.35) return null;
+    return [w/2 + f*dot(d, right)/z, h/2 - f*dot(d, up)/z, z];
+  };
+}
+
+function drawStage() {
+  const cv = document.getElementById("stage"), { g, w, h } = surface(cv), k = C();
+  g.fillStyle = k.void; g.fillRect(0, 0, w, h);
+  const pr = projector(w, h);
+
+  // reference rings in the fleet's own orbital plane
+  const ringBasis = ships.length ? [ships[0].e1, cross(ships[0].n, ships[0].e1)] : [[1,0,0],[0,1,0]];
+  const ring = (rad, style, dash, label, at) => {
+    g.strokeStyle = style; g.lineWidth = 1; g.setLineDash(dash);
+    g.beginPath();
+    let started = false, labelPt = null;
+    for (let i = 0; i <= 96; i++) {
+      const t = i/96*2*Math.PI, c = Math.cos(t), s = Math.sin(t);
+      const q = pr([rad*(c*ringBasis[0][0] + s*ringBasis[1][0]), rad*(c*ringBasis[0][1] + s*ringBasis[1][1]),
+                    rad*(c*ringBasis[0][2] + s*ringBasis[1][2])]);
+      if (!q) { started = false; continue; }
+      if (!started) { g.moveTo(q[0], q[1]); started = true; } else g.lineTo(q[0], q[1]);
+      if (i === at) labelPt = q;
+    }
+    g.stroke(); g.setLineDash([]);
+    if (labelPt && label) { g.fillStyle = k.dim; g.textAlign = "left"; g.textBaseline = "middle";
+      g.fillText(label, labelPt[0] + 5, labelPt[1]); }
+  };
+  ring(6, k.dim, [2,5], "ISCO 6M", 16);
+  ring(3, k.dim, [2,5], "photon 3M", 64);
+
+  // the hole
+  const o = pr([0,0,0]);
+  if (o) {
+    const rad = Math.min(w, h)*1.15*2/o[2];
+    const grd = g.createRadialGradient(o[0], o[1], rad*0.9, o[0], o[1], rad*2.4);
+    grd.addColorStop(0, "rgba(120,140,190,0.22)"); grd.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grd; g.beginPath(); g.arc(o[0], o[1], rad*2.4, 0, 2*Math.PI); g.fill();
+    g.fillStyle = "#000"; g.beginPath(); g.arc(o[0], o[1], rad, 0, 2*Math.PI); g.fill();
+    g.strokeStyle = "rgba(190,205,235,0.5)"; g.lineWidth = 1.2; g.stroke();
+  }
+
+  // trails
+  if (P.trails) {
+    g.lineWidth = 1;
+    for (const s of ships) {
+      if (s.trail.length < 2) continue;
+      g.strokeStyle = "rgba(150,170,210,0.22)";
+      g.beginPath();
+      let started = false;
+      for (const pt of s.trail) {
+        const q = pr(pt);
+        if (!q) { started = false; continue; }
+        if (!started) { g.moveTo(q[0], q[1]); started = true; } else g.lineTo(q[0], q[1]);
+      }
+      g.stroke();
+    }
+  }
+
+  // ships, far ones first
+  const me = cameraIndex(fleetOrder());
+  const pts = [];
+  stageHits = [];
+  for (let i = 0; i < ships.length; i++) {
+    const q = pr(shipPos(ships[i]));
+    if (!q) continue;
+    pts.push({ q, i, mine: i === me, alive: ships[i].alive });
+    if (ships[i].alive) stageHits.push({ i, x: q[0], y: q[1] });
+  }
+  pts.sort((a, b) => b.q[2] - a.q[2]);
+  for (const p of pts) {
+    g.fillStyle = !p.alive ? "rgba(120,130,150,0.3)" : p.mine ? k.ink : k.radial;
+    g.beginPath(); g.arc(p.q[0], p.q[1], p.mine ? 4.2 : 2.4, 0, 2*Math.PI); g.fill();
+    if (p.mine && p.alive) {
+      g.strokeStyle = k.ink; g.lineWidth = 1.4;
+      g.beginPath(); g.arc(p.q[0], p.q[1], 9, 0, 2*Math.PI); g.stroke();
+      g.fillStyle = k.ink; g.textAlign = "left"; g.textBaseline = "middle";
+      g.fillText("you", p.q[0] + 13, p.q[1]);
+    }
+  }
+
+  g.fillStyle = k.dim; g.textAlign = "left"; g.textBaseline = "top";
+  g.fillText("drag to orbit · scroll or pinch to zoom · click a ship to ride it", 10, 10);
+}
+
+// ---- the view from one ship, looking along the line of flight, free to look around
+const GLOW = 1.3;          // the faint rim around the hole in the first-person view, in hole radii
+const SHIP_R = 0.007;      // ship radius in M, for the first-person apparent size
+function drawForward() {
+  const cv = document.getElementById("forward"), { g, w, h } = surface(cv), k = C();
+  g.fillStyle = k.void; g.fillRect(0, 0, w, h);
+  const ord = fleetOrder(), me = cameraIndex(ord);
+  if (me === null) {
+    g.fillStyle = k.dim; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("no ships left", w/2, h/2); return;
+  }
+  const self = ships[me], eye = shipPos(self), f0 = pathDir(self);
+
+  // a frame that never rolls: forward along the flight path, up away from the hole
+  let u0 = unit(eye);
+  u0 = sub(u0, scl(f0, dot(u0, f0)));
+  u0 = len(u0) > 1e-6 ? unit(u0) : unit(cross(f0, self.n));
+  const r0 = cross(u0, f0);
+  const f = pano.zoom * (w/2) / Math.tan(45*Math.PI/180);
+
+  // "hole in view": face along the path, pitched so the hole (disc plus glow) fills only the bottom tenth.
+  // The hole lies straight below the flight path in this frame, so only the pitch has to change.
+  if (P.holeLock && len(eye) > 2.02) {
+    const d = len(eye), below = Math.acos(Math.max(-1, Math.min(1, -dot(f0, unit(eye)))));
+    const R = f * 2/Math.sqrt(d*d - 4);
+    pano.yaw = 0;
+    pano.pitch = Math.max(-1.4, Math.min(1.4, Math.atan((0.4*h + R*GLOW)/f) - below));
+  }
+  const cy = Math.cos(pano.yaw), sy = Math.sin(pano.yaw);
+  const hd = [cy*f0[0] + sy*r0[0], cy*f0[1] + sy*r0[1], cy*f0[2] + sy*r0[2]];
+  const cp = Math.cos(pano.pitch), sp = Math.sin(pano.pitch);
+  const fwd = unit([cp*hd[0] + sp*u0[0], cp*hd[1] + sp*u0[1], cp*hd[2] + sp*u0[2]]);
+  const right = unit(cross(u0, fwd)), up = cross(fwd, right);
+  const view = p => { const d = sub(p, eye); return [dot(d, right), dot(d, up), dot(d, fwd)]; };
+
+  // the hole, as an opaque ball of radius 2M — no lensing, in keeping with the rest of the rendering
+  const dHole = len(eye), vHole = view([0,0,0]);
+  let holeOnScreen = false;
+  if (dHole > 2.02 && vHole[2] > 0.02) {
+    const x = w/2 + f*vHole[0]/vHole[2], y = h/2 - f*vHole[1]/vHole[2];
+    const rad = f * 2/Math.sqrt(dHole*dHole - 4);
+    if (x > -rad && x < w + rad && y > -rad && y < h + rad) {
+      holeOnScreen = true;
+      const gl = g.createRadialGradient(x, y, rad, x, y, rad*GLOW);
+      gl.addColorStop(0, "rgba(130,150,200,0.20)"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gl; g.beginPath(); g.arc(x, y, rad*GLOW, 0, 2*Math.PI); g.fill();
+      g.fillStyle = "#000"; g.beginPath(); g.arc(x, y, rad, 0, 2*Math.PI); g.fill();
+      g.strokeStyle = "rgba(190,205,235,0.55)"; g.lineWidth = 1.2; g.stroke();
+    }
+  }
+
+  // the rest of the fleet
+  if (leader === null || !ships[leader].alive) leader = ord.length ? ord[ord.length-1].i : null;
+  const lead = leader ?? -1;
+  const drawn = [];
+  for (const o of ord) {
+    if (o.i === me) continue;
+    const v = view(shipPos(ships[o.i]));
+    if (v[2] < 0.02) continue;
+    drawn.push({ x: w/2 + f*v[0]/v[2], y: h/2 - f*v[1]/v[2], z: v[2], dist: Math.hypot(v[0], v[1], v[2]),
+      lead: o.i === lead });
+  }
+  drawn.sort((a, b) => b.z - a.z);
+  for (const d of drawn) {
+    // apparent size is the true angular size of a ship at its true distance: an honest distance cue.
+    // Below 0.7 px a dot cannot shrink further, so it fades instead, keeping its drawn area honest.
+    const trueRad = f*SHIP_R/d.dist, rad = Math.max(0.7, trueRad);
+    g.fillStyle = d.lead ? k.ink : k.radial;
+    // plus an atmospheric fade with distance, beyond 8 M, down to 40%
+    g.globalAlpha = Math.min(1, (trueRad/rad)**2) * Math.max(0.4, Math.min(1, 8/d.dist));
+    g.beginPath(); g.arc(d.x, d.y, rad, 0, 2*Math.PI); g.fill();
+    g.globalAlpha = 1;
+    if (d.lead) {
+      g.strokeStyle = k.ink; g.lineWidth = 1; g.beginPath(); g.arc(d.x, d.y, rad + 6, 0, 2*Math.PI); g.stroke();
+      g.fillStyle = k.dim; g.textAlign = "left"; g.textBaseline = "middle";
+      g.fillText("lead", d.x + rad + 10, d.y);
+    }
+  }
+
+  // a chevron at the frame edge when the hole is out of view
+  if (!holeOnScreen) {
+    const ang = Math.atan2(-vHole[1], vHole[0]) + (vHole[2] > 0 ? 0 : Math.PI);
+    const cx = w/2, cyy = h/2, m = 18;
+    const t = Math.min(Math.abs((w/2 - m)/(Math.cos(ang) || 1e-6)), Math.abs((h/2 - m)/(Math.sin(ang) || 1e-6)));
+    const ex = cx + t*Math.cos(ang), ey = cyy + t*Math.sin(ang);
+    g.save(); g.translate(ex, ey); g.rotate(ang);
+    g.fillStyle = "rgba(190,205,235,0.75)";
+    g.beginPath(); g.moveTo(9, 0); g.lineTo(-5, 6); g.lineTo(-5, -6); g.closePath(); g.fill();
+    g.restore();
+    g.fillStyle = k.dim; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("hole", ex - 14*Math.cos(ang), ey - 14*Math.sin(ang));
+  }
+
+  // crosshair marking the line of flight, when the crew has turned away from it
+  if (Math.abs(pano.yaw) > 0.01 || Math.abs(pano.pitch) > 0.01) {
+    const vf = [dot(f0, right), dot(f0, up), dot(f0, fwd)];
+    if (vf[2] > 0.02) {
+      const x = w/2 + f*vf[0]/vf[2], y = h/2 - f*vf[1]/vf[2];
+      g.strokeStyle = "rgba(190,205,235,0.35)"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(x-7, y); g.lineTo(x+7, y); g.moveTo(x, y-7); g.lineTo(x, y+7); g.stroke();
+    }
+  }
+
+  // HUD
+  const rank = ord.findIndex(o => o.i === me) + 1;
+  const leadDist = lead >= 0 && lead !== me ? len(sub(shipPos(ships[lead]), eye)) : 0;
+  g.fillStyle = k.dim; g.textAlign = "left"; g.textBaseline = "top";
+  g.fillText(`ship ${rank} of ${ord.length} from the rear${selected !== null ? " (picked)" : ""}`, 10, 8);
+  if (leadDist > 0) g.fillText(`lead ship ${withKm(leadDist)} ahead`, 10, 24);
+  g.fillText(dHole > 2.02 ? `hole ${withKm(dHole)} away` : "inside the horizon", 10, 40);
+  g.textAlign = "right";
+  const off = Math.round(pano.yaw*180/Math.PI);
+  g.fillText(P.holeLock ? "hole in view · drag to look around"
+    : off === 0 && Math.abs(pano.pitch) < 0.01 ? "drag to look around · pinch to zoom"
+    : `looking ${Math.abs(off)}° ${off >= 0 ? "right" : "left"} of the flight path`, w - 10, 8);
+  if (Math.abs(pano.zoom - 1) > 0.01) g.fillText(`zoom ${pano.zoom.toFixed(1)}×`, w - 10, 24);
+}
+
+function drawLocal() {
+  const cv = document.getElementById("local"), { g, w, h } = surface(cv), k = C();
+  g.fillStyle = k.void; g.fillRect(0, 0, w, h);
+  const rows = localFrame();
+  let m = 1e-9;
+  for (const r of rows) m = Math.max(m, Math.abs(r.a), Math.abs(r.b));
+  m *= 1.2;
+  const sx = v => w/2 + v/m*(w/2 - 16), sy = v => h/2 - v/m*(h/2 - 16);
+  g.strokeStyle = "rgba(150,165,195,0.22)"; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(sx(-m), sy(0)); g.lineTo(sx(m), sy(0));
+  g.moveTo(sx(0), sy(-m)); g.lineTo(sx(0), sy(m)); g.stroke();
+  for (const r of rows) {
+    const t = Math.max(-1, Math.min(1, r.c/(m*0.45)));
+    g.fillStyle = !r.alive ? "rgba(120,130,150,0.25)"
+      : t >= 0 ? `rgba(25,158,112,${0.35 + 0.6*t})` : `rgba(57,135,229,${0.35 - 0.6*t})`;
+    g.beginPath(); g.arc(sx(r.b), sy(r.a), 2.6, 0, 2*Math.PI); g.fill();
+  }
+  g.fillStyle = k.ink; g.beginPath(); g.arc(sx(0), sy(0), 3.6, 0, 2*Math.PI); g.fill();
+  g.fillStyle = k.dim; g.textAlign = "left"; g.textBaseline = "top";
+  g.fillText(`±${m.toFixed(m < 1 ? 2 : 1)} M`, 8, 8);
+  g.textAlign = "center"; g.textBaseline = "bottom";
+  g.fillText("along the path →", w/2, h - 6);
+  g.save(); g.translate(11, h/2); g.rotate(-Math.PI/2);
+  g.textAlign = "center"; g.textBaseline = "top"; g.fillText("toward the hole →", 0, 0); g.restore();
+}
+
+function drawChart() {
+  const cv = document.getElementById("chart"), { g, w, h } = surface(cv), k = C();
+  g.fillStyle = k.void; g.fillRect(0, 0, w, h);
+  if (history.length < 2) return;
+  const L = 34, R = 8, T = 22, B = 26, pw = w - L - R, ph = h - T - B;
+  let lo = 1e9, hi = -1e9, tmax = history[history.length-1].t;
+  for (const p of history) for (const v of [p.a, p.b, p.c]) {
+    if (v > 0) { const q = Math.log10(v); lo = Math.min(lo, q); hi = Math.max(hi, q); }
+  }
+  lo = Math.floor(lo); hi = Math.ceil(hi);
+  if (hi - lo < 1) hi = lo + 1;
+  const X = t => L + t/Math.max(tmax, 1e-6)*pw, Y = v => T + ph - (Math.log10(Math.max(v,1e-9)) - lo)/(hi - lo)*ph;
+  g.strokeStyle = "rgba(150,165,195,0.18)"; g.fillStyle = k.dim; g.lineWidth = 1;
+  g.textAlign = "right"; g.textBaseline = "middle";
+  for (let e = lo; e <= hi; e++) {
+    const y = Y(Math.pow(10, e));
+    g.beginPath(); g.moveTo(L, y); g.lineTo(L + pw, y); g.stroke();
+    g.fillText(e === 0 ? "1" : "1e" + e, L - 4, y);
+  }
+  const series = [["a", k.radial, "radial"], ["b", k.along, "along path"], ["c", k.normal, "out of plane"]];
+  for (const [key, col] of series) {
+    g.strokeStyle = col; g.lineWidth = 2; g.beginPath();
+    history.forEach((p, i) => { const x = X(p.t), y = Y(p[key]); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.stroke();
+  }
+  let lx = L;
+  g.textAlign = "left"; g.textBaseline = "top";
+  for (const [, col, label] of series) {
+    g.strokeStyle = col; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(lx, 10); g.lineTo(lx + 13, 10); g.stroke();
+    g.fillStyle = k.ink; g.fillText(label, lx + 17, 4);
+    lx += 24 + g.measureText(label).width;
+  }
+  g.fillStyle = k.dim; g.textAlign = "center"; g.textBaseline = "bottom";
+  g.fillText("proper time τ/M →", L + pw/2, h - 4);
+}
+
+function sample() {
+  const rows = localFrame();
+  let a = 0, b = 0, c = 0;
+  for (const r of rows) if (r.alive) { a = Math.max(a, Math.abs(r.a)); b = Math.max(b, Math.abs(r.b)); c = Math.max(c, Math.abs(r.c)); }
+  if (a + b + c > 0) history.push({ t: tau, a, b, c });
+  if (history.length > 900) history = history.filter((_, i) => i % 2 === 0);
+}
+
+function phaseText() {
+  const s = ships[0], alive = ships.filter(x => x.alive).length;
+  if (!s.alive) return "the lead ship has reached the singularity";
+  if (split && alive > 1) return "the fleet has split: some ships plunge, some climb back out";
+  if (s.r < 2) return "inside the horizon — the stretch is now in time, not space";
+  if (s.r < 3) return "inside the photon sphere";
+  if (s.r < 6) return "inside the ISCO — no stable orbits remain";
+  if (s.vr > 0) return "climbing back out";
+  return "approaching";
+}
+
+function tick(dt) {
+  for (const s of ships) {
+    advance(s, dt);
+    if (s.alive && P.trails) {
+      s.trail.push(shipPos(s));
+      if (s.trail.length > 320) s.trail.shift();
+    }
+  }
+  tau += dt;
+  // a split means the survivors have genuinely diverged in radius, not merely in the sign of their drift
+  let hi = 0, lo = 1e9, n = 0;
+  for (const s of ships) if (s.alive) { hi = Math.max(hi, s.r); lo = Math.min(lo, s.r); n++; }
+  if (n > 4 && hi > 2.5*lo) split = true;
+  sample();
+}
+
+function render() {
+  drawStage(); drawForward(); drawLocal(); drawChart();
+  const s = ships[0];
+  document.getElementById("rOut").textContent = s.alive ? withKm(s.r) : "0";
+  document.getElementById("tOut").textContent = tau.toFixed(1);
+  document.getElementById("nOut").textContent = String(ships.filter(x => x.alive).length);
+  document.getElementById("phase").innerHTML = "<b>" + phaseText() + "</b>";
+}
+
+let last = 0;
+function frame(now) {
+  if (running) {
+    const dt = Math.min(0.05, (now - last)/1000) * P.speed * 4;
+    if (dt > 0) tick(dt);
+    if (!ships.some(s => s.alive)) { running = false; setPlayLabel(); }
+  }
+  last = now;
+  render();
+  requestAnimationFrame(frame);
+}
+
+// ---- controls: one shared band above each pair of views, all copies kept in sync
+const ctlBar = document.querySelector(".controls");
+const instruments = document.querySelector(".panels:not(.views)");
+const band2 = ctlBar.cloneNode(true);
+band2.querySelectorAll(".first-person").forEach(el => el.remove());
+instruments.parentNode.insertBefore(band2, instruments);
+const all = k => document.querySelectorAll(`[data-k="${k}"]`);
+const setPlayLabel = () => all("play").forEach(b => { b.textContent = running ? "Pause" : "Play"; });
+const sync = (k, el) => all(k).forEach(o => { if (o !== el) { o.value = el.value; o.checked = el.checked; } });
+const bind = (k, fn, fmt) => all(k).forEach(el => el.addEventListener("input", () => {
+  const v = +el.value; sync(k, el);
+  document.querySelectorAll(`[data-o="${k}"]`).forEach(o => { o.textContent = fmt(v); });
+  fn(v);
+}));
+bind("speed", v => { P.speed = v; }, v => v.toFixed(1));
+bind("angm", v => { P.L = v; buildFleet(); }, v => v.toFixed(2));
+bind("spread", v => { P.spread = v; buildFleet(); }, v => v.toFixed(2));
+document.querySelectorAll("[data-station]").forEach(el => el.addEventListener("click", () => {
+  document.querySelectorAll("[data-station]").forEach(b => {
+    b.setAttribute("aria-pressed", String(b.dataset.station === el.dataset.station));
+  });
+  P.station = +el.dataset.station; selected = null; rider = null; pano.yaw = 0; pano.pitch = 0; pano.zoom = 1;
+}));
+all("mass").forEach(el => el.addEventListener("change", () => { sync("mass", el); P.mass = +el.value; }));
+all("trails").forEach(el => el.addEventListener("change", () => {
+  sync("trails", el); P.trails = el.checked;
+  if (!P.trails) for (const s of ships) s.trail = [];
+}));
+const setHoleLock = on => { P.holeLock = on; all("holeLock").forEach(el => { el.checked = on; }); };
+all("holeLock").forEach(el => el.addEventListener("change", () => {
+  setHoleLock(el.checked);
+  if (!el.checked) { pano.yaw = 0; pano.pitch = 0; }
+}));
+all("play").forEach(el => el.addEventListener("click", () => {
+  if (!ships.some(s => s.alive)) buildFleet();
+  running = !running; setPlayLabel();
+}));
+all("reset").forEach(el => el.addEventListener("click", () => {
+  buildFleet(); selected = null; pano.yaw = 0; pano.pitch = 0; pano.zoom = 1;
+  running = false; setPlayLabel(); setHoleLock(true);
+}));
+
+// pinch to zoom (two pointers); while pinching, one-finger drags are suspended
+function pinchable(cv, onScale) {
+  const pts = new Map(); let d0 = 0;
+  const spread = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+  cv.addEventListener("pointerdown", e => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pts.size === 2) d0 = spread(); });
+  cv.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2 && d0 > 0) { const d = spread(); onScale(d / d0); d0 = d; }
+  });
+  const end = e => { pts.delete(e.pointerId); d0 = pts.size === 2 ? spread() : 0; };
+  cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+  return () => pts.size > 1;
+}
+
+// stage: drag to orbit the camera, click (a drag under 5 px) to ride a ship
+const stage = document.getElementById("stage");
+const zoomStage = k => { cam.dist = Math.max(8, Math.min(140, cam.dist / k)); };
+const stagePinching = pinchable(stage, zoomStage);
+let drag = null;
+stage.addEventListener("pointerdown", e => {
+  drag = { x: e.clientX, y: e.clientY, moved: 0 };
+  stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener("pointermove", e => {
+  if (!drag) return;
+  if (stagePinching()) { drag.moved = 99; return; }
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag.moved += Math.abs(dx) + Math.abs(dy);
+  cam.az -= dx*0.006;
+  cam.el = Math.max(-1.45, Math.min(1.45, cam.el + dy*0.006));
+  drag.x = e.clientX; drag.y = e.clientY;
+});
+stage.addEventListener("pointerup", e => {
+  if (drag && drag.moved < 5) {
+    const b = stage.getBoundingClientRect(), px = e.clientX - b.left, py = e.clientY - b.top;
+    let best = null, bd = 18;
+    for (const hit of stageHits) {
+      const d = Math.hypot(hit.x - px, hit.y - py);
+      if (d < bd) { bd = d; best = hit.i; }
+    }
+    if (best !== null) { selected = best; pano.yaw = 0; pano.pitch = 0; pano.zoom = 1; }
+  }
+  drag = null;
+});
+stage.addEventListener("pointercancel", () => { drag = null; });
+
+// forward view: drag to look around
+const fwdCv = document.getElementById("forward");
+const zoomForward = k => { pano.zoom = Math.max(0.5, Math.min(12, pano.zoom * k)); };
+const fwdPinching = pinchable(fwdCv, zoomForward);
+let look = null;
+fwdCv.addEventListener("pointerdown", e => { look = { x: e.clientX, y: e.clientY }; fwdCv.setPointerCapture(e.pointerId); });
+fwdCv.addEventListener("pointermove", e => {
+  if (!look) return;
+  if (fwdPinching()) { look = { x: e.clientX, y: e.clientY }; return; }
+  if (P.holeLock && Math.hypot(e.clientX - look.x, e.clientY - look.y) > 2) setHoleLock(false);
+  pano.yaw += (e.clientX - look.x)*0.005;
+  pano.pitch = Math.max(-1.4, Math.min(1.4, pano.pitch + (e.clientY - look.y)*0.005));
+  if (pano.yaw > Math.PI) pano.yaw -= 2*Math.PI;
+  if (pano.yaw < -Math.PI) pano.yaw += 2*Math.PI;
+  look = { x: e.clientX, y: e.clientY };
+});
+fwdCv.addEventListener("pointerup", () => { look = null; });
+fwdCv.addEventListener("pointercancel", () => { look = null; });
+fwdCv.addEventListener("dblclick", () => { pano.yaw = 0; pano.pitch = 0; pano.zoom = 1; });
+// scroll wheel, and trackpad pinch (which browsers report as a ctrl+wheel), zoom both 3D views
+const wheelZoom = (cv, fn) => cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  fn(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)));
+}, { passive: false });
+wheelZoom(stage, zoomStage);
+wheelZoom(fwdCv, zoomForward);
+
+new ResizeObserver(() => render()).observe(document.body);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => render());
+
+buildFleet();
+requestAnimationFrame(frame);
+</script>
+</html>
