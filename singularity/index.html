@@ -100,17 +100,17 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
   </section>
 
   <div class="controls">
-    <button id="play" class="primary" type="button">Play</button>
-    <button id="reset" type="button">Reset</button>
-    <label class="ctl">speed<input id="speed" type="range" min="0.4" max="8" step="0.2" value="1.4"><output id="speedO">1.4</output></label>
-    <label class="ctl">L/M<input id="angm" type="range" min="3.0" max="3.8" step="0.01" value="3.50"><output id="angmO">3.50</output></label>
-    <label class="ctl">fleet size<input id="spread" type="range" min="0.1" max="0.8" step="0.05" value="0.30"><output id="spreadO">0.30</output></label>
-    <label class="ctl">view from<select id="station">
+    <button data-k="play" class="primary" type="button">Play</button>
+    <button data-k="reset" type="button">Reset</button>
+    <label class="ctl">speed<input data-k="speed" type="range" min="0.4" max="8" step="0.2" value="1.4"><output data-o="speed">1.4</output></label>
+    <label class="ctl">L/M<input data-k="angm" type="range" min="3.0" max="3.8" step="0.01" value="3.50"><output data-o="angm">3.50</output></label>
+    <label class="ctl">fleet size<input data-k="spread" type="range" min="0.1" max="0.8" step="0.05" value="0.30"><output data-o="spread">0.30</output></label>
+    <label class="ctl">view from<select data-k="station">
       <option value="1.00">lead ship</option>
       <option value="0.90">top 10%</option>
       <option value="0.25" selected>bottom 75%</option>
     </select></label>
-    <label class="ctl">trails<input id="trails" type="checkbox" checked></label>
+    <label class="ctl">trails<input data-k="trails" type="checkbox" checked></label>
   </div>
 
   <canvas id="stage" aria-label="Three-dimensional view of a fleet of ships spiralling into a black hole"></canvas>
@@ -590,37 +590,45 @@ function frame(now) {
   if (running) {
     const dt = Math.min(0.05, (now - last)/1000) * P.speed * 4;
     if (dt > 0) tick(dt);
-    if (!ships.some(s => s.alive)) { running = false; document.getElementById("play").textContent = "Play"; }
+    if (!ships.some(s => s.alive)) { running = false; setPlayLabel(); }
   }
   last = now;
   render();
   requestAnimationFrame(frame);
 }
 
-// ---- controls
-const bind = (id, out, fn, fmt) => {
-  const el = document.getElementById(id), o = document.getElementById(out);
-  el.addEventListener("input", () => { const v = +el.value; o.textContent = fmt(v); fn(v); });
-};
-bind("speed", "speedO", v => { P.speed = v; }, v => v.toFixed(1));
-bind("angm", "angmO", v => { P.L = v; buildFleet(); }, v => v.toFixed(2));
-bind("spread", "spreadO", v => { P.spread = v; buildFleet(); }, v => v.toFixed(2));
-document.getElementById("station").addEventListener("change", e => {
-  P.station = +e.target.value; selected = null; pano.yaw = 0; pano.pitch = 0;
-});
-document.getElementById("trails").addEventListener("change", e => {
-  P.trails = e.target.checked;
+// ---- controls: one bar above each view, all copies kept in sync
+const ctlBar = document.querySelector(".controls");
+for (const id of ["forward", "local", "chart"]) {
+  const cv = document.getElementById(id);
+  cv.parentNode.insertBefore(ctlBar.cloneNode(true), cv);
+}
+const all = k => document.querySelectorAll(`[data-k="${k}"]`);
+const setPlayLabel = () => all("play").forEach(b => { b.textContent = running ? "Pause" : "Play"; });
+const sync = (k, el) => all(k).forEach(o => { if (o !== el) { o.value = el.value; o.checked = el.checked; } });
+const bind = (k, fn, fmt) => all(k).forEach(el => el.addEventListener("input", () => {
+  const v = +el.value; sync(k, el);
+  document.querySelectorAll(`[data-o="${k}"]`).forEach(o => { o.textContent = fmt(v); });
+  fn(v);
+}));
+bind("speed", v => { P.speed = v; }, v => v.toFixed(1));
+bind("angm", v => { P.L = v; buildFleet(); }, v => v.toFixed(2));
+bind("spread", v => { P.spread = v; buildFleet(); }, v => v.toFixed(2));
+all("station").forEach(el => el.addEventListener("change", () => {
+  sync("station", el); P.station = +el.value; selected = null; pano.yaw = 0; pano.pitch = 0;
+}));
+all("trails").forEach(el => el.addEventListener("change", () => {
+  sync("trails", el); P.trails = el.checked;
   if (!P.trails) for (const s of ships) s.trail = [];
-});
-document.getElementById("play").addEventListener("click", e => {
+}));
+all("play").forEach(el => el.addEventListener("click", () => {
   if (!ships.some(s => s.alive)) buildFleet();
-  running = !running;
-  e.target.textContent = running ? "Pause" : "Play";
-});
-document.getElementById("reset").addEventListener("click", () => {
+  running = !running; setPlayLabel();
+}));
+all("reset").forEach(el => el.addEventListener("click", () => {
   buildFleet(); selected = null; pano.yaw = 0; pano.pitch = 0;
-  running = false; document.getElementById("play").textContent = "Play";
-});
+  running = false; setPlayLabel();
+}));
 
 // stage: drag to orbit the camera, click (a drag under 5 px) to ride a ship
 const stage = document.getElementById("stage");
