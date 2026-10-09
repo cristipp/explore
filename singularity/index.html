@@ -258,8 +258,8 @@ function inKm(m) {
   const km = m * KM_PER_MSUN * P.mass, sig = x => +x.toPrecision(2);
   if (km < 1) return `${sig(km*1000)} m`;
   if (km < 1e5) return `${sig(km).toLocaleString("en")} km`;
-  if (km < 1e9) return `${sig(km/1e6)} Mkm`;
-  return `${sig(km/1e9)} Gkm`;
+  if (km < 1e9) return `${sig(km/1e6)} million km`;
+  return `${sig(km/1e9)} billion km`;
 }
 const withKm = m => `${m.toFixed(2)} M / ${inKm(m)}`;
 const cam = { az: 0.75, el: 0.42, dist: 46 };
