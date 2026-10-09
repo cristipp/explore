@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* layout: a reading column; controls, then the wide 3D view, then two instrument panels side by side */
+/* layout: a reading column; a shared control band over each side-by-side pair of views */
 :root {
   --bg: #f4f5f7; --panel: #ffffff; --fg: #15181e; --muted: #5c6472; --rule: #dde0e6;
   --accent: #9a6a12;
@@ -30,7 +30,7 @@
 }
 html { font-size: 20px; }
 body { background: var(--bg); color: var(--fg); font: 1rem/1.6 var(--display); }
-main { max-width: 58rem; margin: 0 auto; padding-inline: 16px; padding-block: 2rem 3.5rem; }
+main { max-width: 64rem; margin: 0 auto; padding-inline: 16px; padding-block: 2rem 3.5rem; }
 h1 { font: 600 2.1rem/1.15 var(--display); margin: 0 0 .4rem; text-wrap: balance; }
 .lede { color: var(--muted); margin: 0 0 1.4rem; max-width: 44rem; }
 .blurb { margin: 0 0 1.6rem; }
@@ -56,15 +56,14 @@ label.ctl { font: .8rem/1.3 var(--mono); color: var(--muted); display: inline-fl
 input[type=range] { width: 7.5rem; accent-color: var(--accent); }
 output { font: 500 .8rem var(--mono); color: var(--fg); min-width: 2.6rem; display: inline-block; }
 canvas { display: block; width: 100%; background: var(--void); border-radius: 10px; touch-action: none; }
-#stage { aspect-ratio: 16 / 10; }
-#forward { aspect-ratio: 21 / 9; }
-figure.wide { margin: 0 0 1.1rem; }
 .readout { display: flex; flex-wrap: wrap; gap: .2rem 1.4rem; font: .82rem var(--mono); color: var(--muted);
   margin: .55rem 0 1.1rem; }
 .readout b { color: var(--fg); font-weight: 500; }
 .panels { display: flex; flex-wrap: wrap; gap: .8rem; }
 .panels > figure { flex: 1 1 17rem; min-width: 0; margin: 0; }
 .panels canvas { aspect-ratio: 4 / 3; }
+.panels.views canvas { aspect-ratio: 1 / 1; }
+.readout + .controls { margin-top: 1.6rem; }
 figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
 .note { font-size: .88rem; color: var(--muted); border-left: 2px solid var(--rule); padding-left: .8rem;
   margin: 1.4rem 0; max-width: 44rem; }
@@ -113,20 +112,25 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
     <label class="ctl">trails<input data-k="trails" type="checkbox" checked></label>
   </div>
 
-  <canvas id="stage" aria-label="Three-dimensional view of a fleet of ships spiralling into a black hole"></canvas>
+  <div class="panels views">
+    <figure>
+      <canvas id="stage" aria-label="Three-dimensional view of a fleet of ships spiralling into a black hole"></canvas>
+      <figcaption><b>Outside observer.</b> Drag to orbit, scroll or pinch to zoom, click any ship to ride it.</figcaption>
+    </figure>
+    <figure>
+      <canvas id="forward" aria-label="The view from a ship in the rear third of the fleet, looking ahead"></canvas>
+      <figcaption><b>First person,</b> looking along the line of flight. Drag to look around, scroll or pinch to
+        zoom, double-click to face front. The marker on the frame edge points to the hole when it is out of view.
+        The ships ahead are deeper in, so they fall faster and pull away: you watch your own formation leave you
+        behind.</figcaption>
+    </figure>
+  </div>
   <div class="readout">
     <span>r/M <b id="rOut">16.0</b></span>
     <span>proper time τ/M <b id="tOut">0</b></span>
     <span>ships <b id="nOut">49</b></span>
     <span id="phase"><b>approaching</b></span>
   </div>
-
-  <figure class="wide">
-    <canvas id="forward" aria-label="The view from a ship in the rear third of the fleet, looking ahead"></canvas>
-    <figcaption>From a ship a third of the way back, looking along the line of flight. Drag to look around; the
-      marker on the frame edge points to the hole when it is out of view. The ships ahead are deeper in, so they
-      fall faster and pull away: you watch your own formation leave you behind.</figcaption>
-  </figure>
 
   <div class="panels">
     <figure>
@@ -231,7 +235,7 @@ const APO = 16, R0 = 12;
 let ships = [], tau = 0, running = false, history = [], split = false;
 const P = { L: 3.5, spread: 0.30, N: 48, speed: 1.4, trails: true, station: 0.25 };
 const cam = { az: 0.75, el: 0.42, dist: 46 };
-const pano = { yaw: 0, pitch: 0 };   // where the crew is looking, relative to the line of flight
+const pano = { yaw: 0, pitch: 0, zoom: 1 };   // where the crew is looking, relative to the line of flight
 let selected = null;                 // a ship picked by clicking, else the station preset decides
 let rider = null;                    // the ship the preset chose; kept until it dies so the camera does not hop
 let stageHits = [];                  // screen positions from the last stage draw, for click selection
@@ -378,7 +382,7 @@ function drawStage() {
   }
 
   g.fillStyle = k.dim; g.textAlign = "left"; g.textBaseline = "top";
-  g.fillText("drag to orbit · scroll to zoom · click a ship to ride it", 10, 10);
+  g.fillText("drag to orbit · scroll or pinch to zoom · click a ship to ride it", 10, 10);
 }
 
 // ---- the view from one ship, looking along the line of flight, free to look around
@@ -402,7 +406,7 @@ function drawForward() {
   const cp = Math.cos(pano.pitch), sp = Math.sin(pano.pitch);
   const fwd = unit([cp*hd[0] + sp*u0[0], cp*hd[1] + sp*u0[1], cp*hd[2] + sp*u0[2]]);
   const right = unit(cross(u0, fwd)), up = cross(fwd, right);
-  const f = (w/2) / Math.tan(45*Math.PI/180);
+  const f = pano.zoom * (w/2) / Math.tan(45*Math.PI/180);
   const view = p => { const d = sub(p, eye); return [dot(d, right), dot(d, up), dot(d, fwd)]; };
 
   // the hole, as an opaque ball of radius 2M — no lensing, in keeping with the rest of the rendering
@@ -477,8 +481,9 @@ function drawForward() {
   g.fillText(dHole > 2.02 ? `hole ${dHole.toFixed(2)} M away` : "inside the horizon", 10, 40);
   g.textAlign = "right";
   const off = Math.round(pano.yaw*180/Math.PI);
-  g.fillText(off === 0 && Math.abs(pano.pitch) < 0.01 ? "drag to look around"
+  g.fillText(off === 0 && Math.abs(pano.pitch) < 0.01 ? "drag to look around · pinch to zoom"
     : `looking ${Math.abs(off)}° ${off >= 0 ? "right" : "left"} of the flight path`, w - 10, 8);
+  if (Math.abs(pano.zoom - 1) > 0.01) g.fillText(`zoom ${pano.zoom.toFixed(1)}×`, w - 10, 24);
 }
 
 function drawLocal() {
@@ -600,12 +605,10 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-// ---- controls: one bar above each view, all copies kept in sync
+// ---- controls: one shared band above each pair of views, all copies kept in sync
 const ctlBar = document.querySelector(".controls");
-for (const id of ["forward", "local", "chart"]) {
-  const cv = document.getElementById(id);
-  cv.parentNode.insertBefore(ctlBar.cloneNode(true), cv);
-}
+const instruments = document.querySelector(".panels:not(.views)");
+instruments.parentNode.insertBefore(ctlBar.cloneNode(true), instruments);
 const all = k => document.querySelectorAll(`[data-k="${k}"]`);
 const setPlayLabel = () => all("play").forEach(b => { b.textContent = running ? "Pause" : "Play"; });
 const sync = (k, el) => all(k).forEach(o => { if (o !== el) { o.value = el.value; o.checked = el.checked; } });
@@ -618,7 +621,7 @@ bind("speed", v => { P.speed = v; }, v => v.toFixed(1));
 bind("angm", v => { P.L = v; buildFleet(); }, v => v.toFixed(2));
 bind("spread", v => { P.spread = v; buildFleet(); }, v => v.toFixed(2));
 all("station").forEach(el => el.addEventListener("change", () => {
-  sync("station", el); P.station = +el.value; selected = null; rider = null; pano.yaw = 0; pano.pitch = 0;
+  sync("station", el); P.station = +el.value; selected = null; rider = null; pano.yaw = 0; pano.pitch = 0; pano.zoom = 1;
 }));
 all("trails").forEach(el => el.addEventListener("change", () => {
   sync("trails", el); P.trails = el.checked;
@@ -629,12 +632,29 @@ all("play").forEach(el => el.addEventListener("click", () => {
   running = !running; setPlayLabel();
 }));
 all("reset").forEach(el => el.addEventListener("click", () => {
-  buildFleet(); selected = null; pano.yaw = 0; pano.pitch = 0;
+  buildFleet(); selected = null; pano.yaw = 0; pano.pitch = 0; pano.zoom = 1;
   running = false; setPlayLabel();
 }));
 
+// pinch to zoom (two pointers); while pinching, one-finger drags are suspended
+function pinchable(cv, onScale) {
+  const pts = new Map(); let d0 = 0;
+  const spread = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+  cv.addEventListener("pointerdown", e => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pts.size === 2) d0 = spread(); });
+  cv.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2 && d0 > 0) { const d = spread(); onScale(d / d0); d0 = d; }
+  });
+  const end = e => { pts.delete(e.pointerId); d0 = pts.size === 2 ? spread() : 0; };
+  cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+  return () => pts.size > 1;
+}
+
 // stage: drag to orbit the camera, click (a drag under 5 px) to ride a ship
 const stage = document.getElementById("stage");
+const zoomStage = k => { cam.dist = Math.max(8, Math.min(140, cam.dist / k)); };
+const stagePinching = pinchable(stage, zoomStage);
 let drag = null;
 stage.addEventListener("pointerdown", e => {
   drag = { x: e.clientX, y: e.clientY, moved: 0 };
@@ -642,6 +662,7 @@ stage.addEventListener("pointerdown", e => {
 });
 stage.addEventListener("pointermove", e => {
   if (!drag) return;
+  if (stagePinching()) { drag.moved = 99; return; }
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   drag.moved += Math.abs(dx) + Math.abs(dy);
   cam.az -= dx*0.006;
@@ -656,7 +677,7 @@ stage.addEventListener("pointerup", e => {
       const d = Math.hypot(hit.x - px, hit.y - py);
       if (d < bd) { bd = d; best = hit.i; }
     }
-    if (best !== null) { selected = best; pano.yaw = 0; pano.pitch = 0; }
+    if (best !== null) { selected = best; pano.yaw = 0; pano.pitch = 0; pano.zoom = 1; }
   }
   drag = null;
 });
@@ -664,10 +685,13 @@ stage.addEventListener("pointercancel", () => { drag = null; });
 
 // forward view: drag to look around
 const fwdCv = document.getElementById("forward");
+const zoomForward = k => { pano.zoom = Math.max(0.5, Math.min(12, pano.zoom * k)); };
+const fwdPinching = pinchable(fwdCv, zoomForward);
 let look = null;
 fwdCv.addEventListener("pointerdown", e => { look = { x: e.clientX, y: e.clientY }; fwdCv.setPointerCapture(e.pointerId); });
 fwdCv.addEventListener("pointermove", e => {
   if (!look) return;
+  if (fwdPinching()) { look = { x: e.clientX, y: e.clientY }; return; }
   pano.yaw += (e.clientX - look.x)*0.005;
   pano.pitch = Math.max(-1.4, Math.min(1.4, pano.pitch + (e.clientY - look.y)*0.005));
   if (pano.yaw > Math.PI) pano.yaw -= 2*Math.PI;
@@ -676,11 +700,14 @@ fwdCv.addEventListener("pointermove", e => {
 });
 fwdCv.addEventListener("pointerup", () => { look = null; });
 fwdCv.addEventListener("pointercancel", () => { look = null; });
-fwdCv.addEventListener("dblclick", () => { pano.yaw = 0; pano.pitch = 0; });
-stage.addEventListener("wheel", e => {
+fwdCv.addEventListener("dblclick", () => { pano.yaw = 0; pano.pitch = 0; pano.zoom = 1; });
+// scroll wheel, and trackpad pinch (which browsers report as a ctrl+wheel), zoom both 3D views
+const wheelZoom = (cv, fn) => cv.addEventListener("wheel", e => {
   e.preventDefault();
-  cam.dist = Math.max(8, Math.min(140, cam.dist * (1 + Math.sign(e.deltaY)*0.08)));
+  fn(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)));
 }, { passive: false });
+wheelZoom(stage, zoomStage);
+wheelZoom(fwdCv, zoomForward);
 
 new ResizeObserver(() => render()).observe(document.body);
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => render());
