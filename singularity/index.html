@@ -110,6 +110,7 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
       <option value="0.25" selected>bottom 75%</option>
     </select></label>
     <label class="ctl">trails<input data-k="trails" type="checkbox" checked></label>
+    <label class="ctl first-person">hole in view<input data-k="holeLock" type="checkbox" checked></label>
   </div>
 
   <div class="panels views">
@@ -119,8 +120,9 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
     </figure>
     <figure>
       <canvas id="forward" aria-label="The view from a ship in the rear third of the fleet, looking ahead"></canvas>
-      <figcaption><b>First person,</b> looking along the line of flight. Drag to look around, scroll or pinch to
-        zoom, double-click to face front. The marker on the frame edge points to the hole when it is out of view.
+      <figcaption><b>First person,</b> looking along the line of flight. By default the view tilts to keep the hole
+        in the bottom tenth of the frame; drag to look around freely (this turns "hole in view" off), scroll or
+        pinch to zoom, double-click to face front. The marker on the frame edge points to the hole when it is out of view.
         The ships ahead are deeper in, so they fall faster and pull away: you watch your own formation leave you
         behind.</figcaption>
     </figure>
@@ -233,7 +235,7 @@ function advance(s, dt) {
 // threshold at L/M ~ 3.645 regardless of where we start them.
 const APO = 16, R0 = 12;
 let ships = [], tau = 0, running = false, history = [], split = false;
-const P = { L: 3.5, spread: 0.30, N: 48, speed: 1.4, trails: true, station: 0.25 };
+const P = { L: 3.5, spread: 0.30, N: 48, speed: 1.4, trails: true, station: 0.25, holeLock: true };
 const cam = { az: 0.75, el: 0.42, dist: 46 };
 const pano = { yaw: 0, pitch: 0, zoom: 1 };   // where the crew is looking, relative to the line of flight
 let selected = null;                 // a ship picked by clicking, else the station preset decides
@@ -402,12 +404,21 @@ function drawForward() {
   u0 = sub(u0, scl(f0, dot(u0, f0)));
   u0 = len(u0) > 1e-6 ? unit(u0) : unit(cross(f0, self.n));
   const r0 = cross(u0, f0);
+  const f = pano.zoom * (w/2) / Math.tan(45*Math.PI/180);
+
+  // "hole in view": face along the path, pitched so the hole's disc fills the bottom tenth of the frame.
+  // The hole lies straight below the flight path in this frame, so only the pitch has to change.
+  if (P.holeLock && len(eye) > 2.02) {
+    const d = len(eye), below = Math.acos(Math.max(-1, Math.min(1, -dot(f0, unit(eye)))));
+    const R = f * 2/Math.sqrt(d*d - 4);
+    pano.yaw = 0;
+    pano.pitch = Math.max(-1.4, Math.min(1.4, Math.atan((0.4*h + R)/f) - below));
+  }
   const cy = Math.cos(pano.yaw), sy = Math.sin(pano.yaw);
   const hd = [cy*f0[0] + sy*r0[0], cy*f0[1] + sy*r0[1], cy*f0[2] + sy*r0[2]];
   const cp = Math.cos(pano.pitch), sp = Math.sin(pano.pitch);
   const fwd = unit([cp*hd[0] + sp*u0[0], cp*hd[1] + sp*u0[1], cp*hd[2] + sp*u0[2]]);
   const right = unit(cross(u0, fwd)), up = cross(fwd, right);
-  const f = pano.zoom * (w/2) / Math.tan(45*Math.PI/180);
   const view = p => { const d = sub(p, eye); return [dot(d, right), dot(d, up), dot(d, fwd)]; };
 
   // the hole, as an opaque ball of radius 2M — no lensing, in keeping with the rest of the rendering
@@ -483,7 +494,8 @@ function drawForward() {
   g.fillText(dHole > 2.02 ? `hole ${dHole.toFixed(2)} M away` : "inside the horizon", 10, 40);
   g.textAlign = "right";
   const off = Math.round(pano.yaw*180/Math.PI);
-  g.fillText(off === 0 && Math.abs(pano.pitch) < 0.01 ? "drag to look around · pinch to zoom"
+  g.fillText(P.holeLock ? "hole in view · drag to look around"
+    : off === 0 && Math.abs(pano.pitch) < 0.01 ? "drag to look around · pinch to zoom"
     : `looking ${Math.abs(off)}° ${off >= 0 ? "right" : "left"} of the flight path`, w - 10, 8);
   if (Math.abs(pano.zoom - 1) > 0.01) g.fillText(`zoom ${pano.zoom.toFixed(1)}×`, w - 10, 24);
 }
@@ -610,7 +622,9 @@ function frame(now) {
 // ---- controls: one shared band above each pair of views, all copies kept in sync
 const ctlBar = document.querySelector(".controls");
 const instruments = document.querySelector(".panels:not(.views)");
-instruments.parentNode.insertBefore(ctlBar.cloneNode(true), instruments);
+const band2 = ctlBar.cloneNode(true);
+band2.querySelectorAll(".first-person").forEach(el => el.remove());
+instruments.parentNode.insertBefore(band2, instruments);
 const all = k => document.querySelectorAll(`[data-k="${k}"]`);
 const setPlayLabel = () => all("play").forEach(b => { b.textContent = running ? "Pause" : "Play"; });
 const sync = (k, el) => all(k).forEach(o => { if (o !== el) { o.value = el.value; o.checked = el.checked; } });
@@ -629,13 +643,18 @@ all("trails").forEach(el => el.addEventListener("change", () => {
   sync("trails", el); P.trails = el.checked;
   if (!P.trails) for (const s of ships) s.trail = [];
 }));
+const setHoleLock = on => { P.holeLock = on; all("holeLock").forEach(el => { el.checked = on; }); };
+all("holeLock").forEach(el => el.addEventListener("change", () => {
+  setHoleLock(el.checked);
+  if (!el.checked) { pano.yaw = 0; pano.pitch = 0; }
+}));
 all("play").forEach(el => el.addEventListener("click", () => {
   if (!ships.some(s => s.alive)) buildFleet();
   running = !running; setPlayLabel();
 }));
 all("reset").forEach(el => el.addEventListener("click", () => {
   buildFleet(); selected = null; pano.yaw = 0; pano.pitch = 0; pano.zoom = 1;
-  running = false; setPlayLabel();
+  running = false; setPlayLabel(); setHoleLock(true);
 }));
 
 // pinch to zoom (two pointers); while pinching, one-finger drags are suspended
@@ -694,6 +713,7 @@ fwdCv.addEventListener("pointerdown", e => { look = { x: e.clientX, y: e.clientY
 fwdCv.addEventListener("pointermove", e => {
   if (!look) return;
   if (fwdPinching()) { look = { x: e.clientX, y: e.clientY }; return; }
+  if (P.holeLock && Math.hypot(e.clientX - look.x, e.clientY - look.y) > 2) setHoleLock(false);
   pano.yaw += (e.clientX - look.x)*0.005;
   pano.pitch = Math.max(-1.4, Math.min(1.4, pano.pitch + (e.clientY - look.y)*0.005));
   if (pano.yaw > Math.PI) pano.yaw -= 2*Math.PI;
