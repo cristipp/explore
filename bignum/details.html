@@ -10,7 +10,7 @@
 <body>
 <nav><a href="index.html">↑ bignum</a> · <a href="inhead_arithmetic.html">inhead_arithmetic</a> · <a href="sota_factorization.html">sota_factorization</a> · <a href="details.html">details</a></nav>
 <h1>bignum — details</h1>
-<p class="note"><em>This page was written by Claude (Opus 5.5), an AI model by Anthropic, for <a href="https://x.com/cristipp">@cristipp</a>, who directed the experiments.</em></p>
+<p class="credit" style="font-size:.85em;opacity:.75"><em>Created on 6 October 2026 by Claude Opus 5.5, prompted by <a href="https://x.com/cristipp127">@cristipp127</a>.</em></p>
 <p><strong>Status: all runs complete (2026-10-06).</strong> SOTA experiment graded; full no-think grids for all three tasks; fine frontiers at T = 60 s for
 all factoring programs. The tables below are generated
 from the run data; the findings are written by hand. Interactive charts:
@@ -114,7 +114,7 @@ on fresh pairs, with T = 60 s per number.</p>
 <code>Qwen3.8-27B-Q4_K_M.gguf</code> on llama-server.</p>
 <p><strong>Hardware.</strong> The two setups differ, so times compare machines and serving stacks, not models:</p>
 <table>
-<tr><th></th><th><a href="https://x.com/simonw">@simonw</a></th><th><a href="https://x.com/cristipp">@cristipp</a> (Qwen)</th><th><a href="https://x.com/cristipp">@cristipp</a> (Claude programs)</th></tr>
+<tr><th></th><th><a href="https://x.com/simonw">@simonw</a></th><th><a href="https://x.com/cristipp127">@cristipp127</a> (Qwen)</th><th><a href="https://x.com/cristipp127">@cristipp127</a> (Claude programs)</th></tr>
 <tr><td>Hardware</td><td>NVIDIA DGX Spark (GB10)</td><td>MacBook Pro, Apple M5 Max (18 cores), 128 GB</td>
 <td>MacBook Air, Apple M4 (10 cores), 32 GB</td></tr>
 <tr><td>Server / runtime</td><td>llama.cpp <code>llama-server</code> (CUDA), 1 parallel slot</td>
@@ -123,7 +123,7 @@ on fresh pairs, with T = 60 s per number.</p>
 multi-token prediction (<code>-mtp</code>)</td><td>–</td></tr>
 </table>
 <p>On the same 27B and the same cases, both setups generate about the same number of tokens (thinking medium: 623 vs 668
-per case), but <a href="https://x.com/cristipp">@cristipp</a>'s setup runs at about 30 tok/s vs <a href="https://x.com/simonw">@simonw</a>'s 12 tok/s, so 3,486 s vs 9,565 s. Flash is faster still (≈ 77 tok/s,
+per case), but <a href="https://x.com/cristipp127">@cristipp127</a>'s setup runs at about 30 tok/s vs <a href="https://x.com/simonw">@simonw</a>'s 12 tok/s, so 3,486 s vs 9,565 s. Flash is faster still (≈ 77 tok/s,
 a mixture-of-experts model) and thinks less (286 tokens per case): 632 s. Only our own runs, all on the same M5 Max, are
 comparable on time with each other.</p>
 <h3>Paired 169 cases (one per digit-length cell, easiest first)</h3>
