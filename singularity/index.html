@@ -136,7 +136,7 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
       <canvas id="forward" aria-label="The view from a ship in the rear third of the fleet, looking ahead"></canvas>
       <figcaption><b>First person,</b> looking along the line of flight. By default the view tilts to keep the hole
         in the bottom tenth of the frame; drag to look around freely (this turns "hole in view" off), scroll or
-        pinch to zoom, double-click to face front. The marker on the frame edge points to the hole when it is out of view. Each dot is drawn at the true apparent size of a ship at its true
+        pinch to zoom, double-click to face front. The marker on the frame edge points to the hole when it is out of view. The faint line is the path of the fleet's centre, start to finish: the noodle stretches along it. Each dot is drawn at the true apparent size of a ship at its true
         distance, so size is an honest distance cue; ships too far to cover a pixel fade instead of shrinking, and
         everything beyond 8 M also dims with distance.
         The ships ahead are deeper in, so they fall faster and pull away: you watch your own formation leave you
@@ -281,6 +281,15 @@ function buildFleet() {
     ships.push(makeShip([base[0] + P.spread*d[0], base[1] + P.spread*d[1], base[2] + P.spread*d[2]], bu));
   }
   tau = 0; history = []; split = false; rider = null; leader = null;
+  centrePath = traceCentre();
+}
+
+// ---- the whole geodesic of the fleet's centre, start to finish: the curve the noodle is stretched along
+let centrePath = [];
+function traceCentre() {
+  const c = { ...ships[0], trail: [] }, pts = [shipPos(c)];
+  for (let i = 0; i < 4000 && c.alive && c.r < 40; i++) { advance(c, 0.05); pts.push(shipPos(c)); }
+  return pts;
 }
 
 // ---- the true direction of motion: tangential far out, almost radial during the plunge
@@ -464,6 +473,18 @@ function drawForward() {
       g.strokeStyle = "rgba(190,205,235,0.55)"; g.lineWidth = 1.2; g.stroke();
     }
   }
+
+  // the fleet's average path: a faint line along the centre's geodesic, which the noodle lies along
+  g.strokeStyle = k.ink; g.globalAlpha = 0.22; g.lineWidth = 1; g.beginPath();
+  let pen = false;
+  for (const pt of centrePath) {
+    const v = view(pt);
+    if (v[2] < 0.02) { pen = false; continue; }
+    const x = w/2 + f*v[0]/v[2], y = h/2 - f*v[1]/v[2];
+    if (pen) g.lineTo(x, y); else g.moveTo(x, y);
+    pen = true;
+  }
+  g.stroke(); g.globalAlpha = 1;
 
   // the rest of the fleet
   if (leader === null || !ships[leader].alive) leader = ord.length ? ord[ord.length-1].i : null;
