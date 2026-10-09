@@ -2,7 +2,7 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Angled Infall</title>
+<title>Singularity Angled Infall</title>
 <meta name="description" content="A fleet of spacecraft falls into a Schwarzschild black hole at an angle. Exact geodesics, integrated live in the browser.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,7 +71,7 @@ figcaption { font-size: .82rem; color: var(--muted); margin-top: .35rem; }
 </style>
 
 <main>
-  <h1>Angled Infall</h1>
+  <h1>Singularity Angled Infall</h1>
 <p class="credit" style="font-size:.85em;opacity:.75"><em>Created on 9 October 2026 by Claude Opus 5.5, prompted by <a href="https://x.com/cristipp127">@cristipp127</a>.</em></p>
   <p class="lede">What happens to a spacecraft that falls into a black hole at an angle, rather than on a straight
     radial dive?</p>
@@ -233,6 +233,7 @@ const P = { L: 3.5, spread: 0.30, N: 48, speed: 1.4, trails: true, station: 0.25
 const cam = { az: 0.75, el: 0.42, dist: 46 };
 const pano = { yaw: 0, pitch: 0 };   // where the crew is looking, relative to the line of flight
 let selected = null;                 // a ship picked by clicking, else the station preset decides
+let rider = null;                    // the ship the preset chose; kept until it dies so the camera does not hop
 let stageHits = [];                  // screen positions from the last stage draw, for click selection
 
 function buildFleet() {
@@ -246,7 +247,7 @@ function buildFleet() {
     const d = [Math.cos(th)*rad, y, Math.sin(th)*rad];
     ships.push(makeShip([base[0] + P.spread*d[0], base[1] + P.spread*d[1], base[2] + P.spread*d[2]], bu));
   }
-  tau = 0; history = []; split = false;
+  tau = 0; history = []; split = false; rider = null;
 }
 
 // ---- the true direction of motion: tangential far out, almost radial during the plunge
@@ -271,7 +272,9 @@ function cameraIndex(ord) {
   if (!ord.length) return null;
   if (selected !== null && ships[selected] && ships[selected].alive) return selected;
   selected = null;
-  return ord[Math.min(ord.length - 1, Math.max(0, Math.round(P.station * (ord.length - 1))))].i;
+  if (rider !== null && ships[rider] && ships[rider].alive) return rider;
+  rider = ord[Math.min(ord.length - 1, Math.max(0, Math.round(P.station * (ord.length - 1))))].i;
+  return rider;
 }
 
 // ---- local frame of the lead ship: radial, along-path, out-of-plane
@@ -615,7 +618,7 @@ bind("speed", v => { P.speed = v; }, v => v.toFixed(1));
 bind("angm", v => { P.L = v; buildFleet(); }, v => v.toFixed(2));
 bind("spread", v => { P.spread = v; buildFleet(); }, v => v.toFixed(2));
 all("station").forEach(el => el.addEventListener("change", () => {
-  sync("station", el); P.station = +el.value; selected = null; pano.yaw = 0; pano.pitch = 0;
+  sync("station", el); P.station = +el.value; selected = null; rider = null; pano.yaw = 0; pano.pitch = 0;
 }));
 all("trails").forEach(el => el.addEventListener("change", () => {
   sync("trails", el); P.trails = el.checked;
