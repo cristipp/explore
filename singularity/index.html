@@ -238,6 +238,7 @@ const cam = { az: 0.75, el: 0.42, dist: 46 };
 const pano = { yaw: 0, pitch: 0, zoom: 1 };   // where the crew is looking, relative to the line of flight
 let selected = null;                 // a ship picked by clicking, else the station preset decides
 let rider = null;                    // the ship the preset chose; kept until it dies so the camera does not hop
+let leader = null;                   // the ship that led at the start; kept until it dies so the label does not hop
 let stageHits = [];                  // screen positions from the last stage draw, for click selection
 
 function buildFleet() {
@@ -251,7 +252,7 @@ function buildFleet() {
     const d = [Math.cos(th)*rad, y, Math.sin(th)*rad];
     ships.push(makeShip([base[0] + P.spread*d[0], base[1] + P.spread*d[1], base[2] + P.spread*d[2]], bu));
   }
-  tau = 0; history = []; split = false; rider = null;
+  tau = 0; history = []; split = false; rider = null; leader = null;
 }
 
 // ---- the true direction of motion: tangential far out, almost radial during the plunge
@@ -426,7 +427,8 @@ function drawForward() {
   }
 
   // the rest of the fleet
-  const lead = ord.length ? ord[ord.length-1].i : -1;
+  if (leader === null || !ships[leader].alive) leader = ord.length ? ord[ord.length-1].i : null;
+  const lead = leader ?? -1;
   const drawn = [];
   for (const o of ord) {
     if (o.i === me) continue;
